@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  STAFF
+  ADMIN
+}
+
+enum AgeRating {
+  P
+  K
+  T13
+  T16
+  T18
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum SeatType {
+  STANDARD
+  VIP
+  COUPLE
+}
+
+enum BookingStatus {
+  HELD
+  PENDING_PAYMENT
+  PAID
+  PAYMENT_FAILED
+  EXPIRED
+  CANCELLED
+  REFUNDED
+  VOIDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum TicketStatus {
+  ISSUED
+  CHECKED_IN
+  VOIDED
+  REFUNDED
+}
+
+enum ShowtimeStatus {
+  SCHEDULED
+  CLOSED
+  FINISHED
+  CANCELLED
+}
+
+model User {
+  id        String            @id @default(cuid())
+  email     String            @unique
+  password  String
+  fullName  String?
+  role      UserRole          @default(CUSTOMER)
+  createdAt DateTime          @default(now())
+  bookings      Booking[]
+  ageChecks     AgeVerification[]
+  notifications Notification[]
+}
+
+model Movie {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  description String?       @db.Text
+  durationMin Int
+  rating      AgeRating
+  status      ContentStatus @default(PUBLISHED)
+  posterUrl   String?
+  showtimes   Showtime[]
+}
+
+model Cinema {
+  id      String @id @default(cuid())
+  name    String
+  address String
+  rooms   Room[]
+}
+
+model Room {
+  id       String     @id @default(cuid())
+  cinemaId String
+  cinema   Cinema     @relation(fields: [cinemaId], references: [id])
+  name     String
+  rows     Int
+  cols     Int
+  seats    Seat[]
+  showtimes Showtime[]
+}
+
+model Seat {
+  id         String   @id @default(cuid())
+  roomId     String
+  room       Room     @relation(fields: [roomId], references: [id])
+  row        String
+  number     Int
+  type       SeatType
+  pairSeatId String?
+  isActive   Boolean  @default(true)
+
+  @@unique([roomId, row, number])
+}
+
+model Showtime {
+  id         String              @id @default(cuid())
+  movieId    String
+  movie      Movie               @relation(fields: [movieId], references: [id])
+  roomId     String
+  room       Room                @relation(fields: [roomId], references: [id])
+  startsAt   DateTime
+  endsAt     DateTime
+  priceBase  Decimal             @db.Decimal(12, 0)
+  status     ShowtimeStatus      @default(SCHEDULED)
+  bookings   Booking[]
+  seatBlocks ShowtimeSeatBlock[]
+
+  @@index([movieId, startsAt])
+  @@index([roomId, startsAt])
+}
+
+model ShowtimeSeatBlock {
+  id         String   @id @default(cuid())
+  showtimeId String
+  showtime   Showtime @relation(fields: [showtimeId], references: [id])
+  seatId     String
+  reason     String?
+
+  @@unique([showtimeId, seatId])
+}
+
+model Booking {
+  id               String                 @id @default(cuid())
+  userId           String
+  user             User                   @relation(fields: [userId], references: [id])
+  showtimeId       String
+  showtime         Showtime               @relation(fields: [showtimeId], references: [id])
+  status           BookingStatus
+  totalAmount      Decimal                @db.Decimal(12, 0)
+  discountAmount   Decimal                @default(0) @db.Decimal(12, 0)
+  currency         String                 @default("VND")
+  holdsExpiresAt   DateTime?
+  paymentExpiresAt DateTime?
+  ageCheckId       String?
+  promoCode        String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  seats            BookingSeat[]
+  payments         Payment[]
+  tickets          Ticket[]
+  statusHistory    BookingStatusHistory[]
+
+  @@index([userId, status])
+  @@index([showtimeId, status])
+  @@index([holdsExpiresAt])
+  @@index([paymentExpiresAt])
+}
+
+model BookingSeat {
+  id         String  @id @default(cuid())
+  bookingId  String
+  booking    Booking @relation(fields: [bookingId], references: [id])
+  showtimeId String
+  seatId     String
+  unitPrice  Decimal @db.Decimal(12, 0)
+
+  @@unique([bookingId, seatId])
+  @@index([showtimeId, seatId])
+}
+
+model BookingStatusHistory {
+  id         String         @id @default(cuid())
+  bookingId  String
+  booking    Booking        @relation(fields: [bookingId], references: [id])
+  fromStatus BookingStatus?
+  toStatus   BookingStatus
+  reason     String?
+  actorId    String?
+  createdAt  DateTime       @default(now())
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  bookingId      String
+  booking        Booking       @relation(fields: [bookingId], references: [id])
+  provider       String
+  status         PaymentStatus @default(PENDING)
+  amount         Decimal       @db.Decimal(12, 0)
+  idempotencyKey String        @unique
+  providerTxnId  String?       @unique
+  rawPayload     Json?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+  refunds        Refund[]
+}
+
+model Refund {
+  id            String        @id @default(cuid())
+  paymentId     String
+  payment       Payment       @relation(fields: [paymentId], references: [id])
+  amount        Decimal       @db.Decimal(12, 0)
+  status        PaymentStatus
+  reason        String?
+  providerTxnId String?
+  createdAt     DateTime      @default(now())
+}
+
+model Ticket {
+  id          String       @id @default(cuid())
+  bookingId   String
+  booking     Booking      @relation(fields: [bookingId], references: [id])
+  code        String       @unique
+  status      TicketStatus @default(ISSUED)
+  qrPayload   String
+  checkedInAt DateTime?
+  checkedInBy String?
+  createdAt   DateTime     @default(now())
+}
+
+model AgeVerification {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  bookingId       String?
+  showtimeId      String?
+  requiredAge     Int
+  computedAge     Int?
+  passed          Boolean
+  confidence      Float?
+  idNumberHash    String?
+  rawImageDeleted Boolean  @default(false)
+  failureReason   String?
+  createdAt       DateTime @default(now())
+  expiresAt       DateTime?
+}
+
+enum NotificationType {
+  HOLD_EXPIRING
+  PAYMENT_SUCCESS
+  SHOWTIME_REMINDER
+  AGE_VERIFIED
+  AGE_FAILED
+  BOOKING_CANCELLED
+  BOOKING_REFUNDED
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id])
+  type        NotificationType
+  title       String
+  body        String           @db.Text
+  href        String?
+  bookingId   String?
+  movieSlug   String?
+  readAt      DateTime?
+  emailSentAt DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, type, bookingId])
+}
+
+model SeatLock {
+  showtimeId String
+  seatId     String
+  bookingId  String
+  userId     String
+  expiresAt  DateTime
+
+  @@id([showtimeId, seatId])
+}

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CineWave - Scroll-Driven Video Animation</title>
+
+  <!-- Lenis Smooth Scroll CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.css" />
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Lenis & GSAP CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+</head>
+<body>
+
+  <!-- Top Controller Bar -->
+  <header class="control-header">
+    <div class="brand-group">
+      <span class="control-title">CineWave</span>
+      <span class="fps-badge" id="fps-counter">60 FPS</span>
+    </div>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="btn-mode-canvas" onclick="switchMode('canvas')">Canvas GPU 60fps (Mượt nhất)</button>
+      <button class="mode-btn" id="btn-mode-video" onclick="switchMode('video')">Video Direct Scrub</button>
+    </div>
+    <span class="scroll-indicator" id="scroll-pct">0% SCROLL</span>
+  </header>
+
+  <!-- Preloader for Frame Extraction -->
+  <div id="loader" class="loader-overlay">
+    <div class="loader-spinner"></div>
+    <div class="loader-bar">
+      <div id="loader-fill" class="loader-fill"></div>
+    </div>
+    <div id="loader-info" class="loader-info">Đang tối ưu khung hình 60 FPS (0%)...</div>
+  </div>
+
+  <!-- 1. Pinned Fullscreen Background (100vw, 100vh) -->
+  <div class="pin-wrapper" id="pin-container">
+    <!-- Mode A: HTML5 Canvas for Zero-Lag GPU Frame Rendering -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- Mode B: Native MP4 Video scrubbing using /videos/hero-cinematic.mp4 -->
+    <video
+      id="bg-video"
+      src="/videos/hero-cinematic.mp4"
+      playsinline
+      muted
+      preload="auto"
+    ></video>
+  </div>
+
+  <!-- Content Overlay: Sections that scroll over the pinned background -->
+  <main class="content-wrapper" id="content-track">
+    <!-- Section 1: Hero -->
+    <section class="scroll-section">
+      <div class="card-overlay">
+        <span class="tag-badge">Điện Ảnh Không Gian</span>
+        <h1>CINEWAVE SCROLL</h1>
+        <p>Hệ thống hoạt ảnh video đồng bộ mượt mà theo từng pixel cuộn chuột với quán tính mượt mà.</p>
+        <div class="scroll-prompt">
+          <span>↓ Cuộn chuột để trải nghiệm độ mượt</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Smooth Scrubbing -->
+    <section class="scroll-section">
+      <div class="card-overlay">
+        <span class="tag-badge">Công Nghệ Tối Ưu</span>
+        <h2>Lenis + GSAP ScrollTrigger</h2>
+        <p>Kết hợp quán tính cuộn lỏng (liquid momentum) từ Lenis và bộ điều phối GPU Canvas giúp loại bỏ hoàn toàn độ trễ giật bước nhảy chuột.</p>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="num">60-120</div>
+            <div class="label">FPS GPU Render</div>
+          </div>
+          <div class="stat-item">
+            <div class="num">0.1ms</div>
+            <div class="label">Độ trễ Frame Draw</div>
+          </div>
+          <div class="stat-item">
+            <div class="num">Zero</div>
+            <div class="label">Jitter / Drop Frames</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Lazy-Loading & Buffer -->
+    <section class="scroll-section">
+      <div class="card-overlay">
+        <span class="tag-badge">Xử Lý Khung Hình</span>
+        <h2>Bộ Đệm GPU ImageBitmap</h2>
+        <p>Trích xuất trực tiếp khung hình vào VRAM đồ họa, vẽ trực tiếp qua Canvas 2D Context với thuật toán scale chuẩn Object-Fit Cover.</p>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="num">100%</div>
+            <div class="label">Offline / Local</div>
+          </div>
+          <div class="stat-item">
+            <div class="num">Retina</div>
+            <div class="label">Sắc nét HiDPI</div>
+          </div>
+          <div class="stat-item">
+            <div class="num">Mượt Mà</div>
+            <div class="label">Cuộn 2 chiều</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Final Call to Action -->
+    <section class="scroll-section">
+      <div class="card-overlay">
+        <span class="tag-badge">Hoàn Tất</span>
+        <h2>Trải Nghiệm Chuẩn Awwwards</h2>
+        <p>Hoạt ảnh thích ứng hoàn hảo trên mọi kích thước màn hình từ Desktop Ultra-wide đến Mobile cảm ứng.</p>
+        <div>
+          <a href="/" class="primary-btn">Vào Trang Chủ CineWave →</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

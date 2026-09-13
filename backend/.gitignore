@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+generated
+data/users.json
+data/catalog.json
+data/bookings.json
+data/notifications.json
