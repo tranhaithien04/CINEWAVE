@@ -12,13 +12,13 @@ import {
 export async function register(req: Request, res: Response) {
   const { user, tokens } = await registerUser(req.body);
   setAuthCookies(res, tokens);
-  res.status(201).json({ user });
+  res.status(201).json({ user, tokens });
 }
 
 export async function login(req: Request, res: Response) {
   const { user, tokens } = await loginUser(req.body);
   setAuthCookies(res, tokens);
-  res.status(200).json({ user });
+  res.status(200).json({ user, tokens });
 }
 
 export async function logout(req: Request, res: Response) {
@@ -28,9 +28,10 @@ export async function logout(req: Request, res: Response) {
 }
 
 export async function refresh(req: Request, res: Response) {
-  const { user, tokens } = await refreshSession(req.cookies?.[REFRESH_COOKIE]);
+  const token = req.body?.refreshToken || req.cookies?.[REFRESH_COOKIE];
+  const { user, tokens } = await refreshSession(token);
   setAuthCookies(res, tokens);
-  res.status(200).json({ user });
+  res.status(200).json({ user, tokens });
 }
 
 export async function me(req: Request, res: Response) {
