@@ -16,25 +16,29 @@ import { useCatalog } from "@/hooks/use-catalog";
 import { paths } from "@/routes/paths";
 import { cn } from "@/utils/cn";
 
+const dayKeyFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+const dayLabelFmt = new Intl.DateTimeFormat("vi-VN", {
+  weekday: "short",
+  day: "2-digit",
+  month: "2-digit",
+  timeZone: "Asia/Ho_Chi_Minh",
+});
+const showTimeFmt = new Intl.DateTimeFormat("vi-VN", {
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "Asia/Ho_Chi_Minh",
+});
+
 function dayKey(iso: string) {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(iso));
+  return dayKeyFmt.format(new Date(iso));
 }
 
 function formatDay(iso: string) {
-  return new Intl.DateTimeFormat("vi-VN", {
-    weekday: "short",
-    day: "2-digit",
-    month: "2-digit",
-    timeZone: "Asia/Ho_Chi_Minh",
-  }).format(new Date(iso));
+  return dayLabelFmt.format(new Date(iso));
 }
 
 function formatTime(iso: string) {
-  return new Intl.DateTimeFormat("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Ho_Chi_Minh",
-  }).format(new Date(iso));
+  return showTimeFmt.format(new Date(iso));
 }
 
 export function MovieDetailPage({ slug }: { slug: string }) {
@@ -132,7 +136,7 @@ export function MovieDetailPage({ slug }: { slug: string }) {
                   {visible.map((showtime) => (
                     <Card
                       key={showtime.id}
-                      className="group relative overflow-hidden rounded-2xl border-white/10 bg-cinema-900/70 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-cyan-500/50 hover:shadow-xl hover:shadow-cyan-500/10"
+                      className="group relative overflow-hidden rounded-2xl border-white/10 bg-cinema-900/70 backdrop-blur-md transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:border-cyan-500/50 hover:shadow-xl hover:shadow-cyan-500/10"
                     >
                       <CardContent className="flex items-center justify-between gap-4 p-5">
                         <div className="space-y-1.5">

@@ -61,7 +61,7 @@ export function MovieFilters({
             type="button"
             onClick={() => onChange(option)}
             className={cn(
-              "relative inline-flex items-center justify-center rounded-xl border px-3.5 py-1.5 text-xs transition-all duration-200 active:scale-95",
+              "relative inline-flex items-center justify-center rounded-xl border px-3.5 py-1.5 text-xs transition-[transform,background-color,border-color,color] duration-200 active:scale-95",
               isActive ? conf.activeClass : conf.inactiveClass,
             )}
           >

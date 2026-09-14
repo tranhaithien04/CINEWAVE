@@ -26,7 +26,10 @@ export function ScrollHeroBackground({ containerRef }: ScrollHeroBackgroundProps
   const [failed, setFailed] = useState(false);
   const [firstFrameLoaded, setFirstFrameLoaded] = useState(false);
 
-  const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(TOTAL_FRAMES).fill(null));
+  const imagesRef = useRef<(HTMLImageElement | null)[] | null>(null);
+  if (!imagesRef.current) {
+    imagesRef.current = new Array(TOTAL_FRAMES).fill(null);
+  }
   const targetProgressRef = useRef(0);
   const currentProgressRef = useRef(0);
   const isDestroyedRef = useRef(false);
@@ -61,6 +64,7 @@ export function ScrollHeroBackground({ containerRef }: ScrollHeroBackgroundProps
     // Find nearest loaded frame if current frame is still fetching
     function getNearestLoadedImage(targetIdx: number): HTMLImageElement | null {
       const imgs = imagesRef.current;
+      if (!imgs) return null;
       if (imgs[targetIdx]?.complete) return imgs[targetIdx];
 
       for (let offset = 1; offset < 15; offset++) {
@@ -124,14 +128,15 @@ export function ScrollHeroBackground({ containerRef }: ScrollHeroBackgroundProps
     // Image Preloader helper
     function preloadImage(idx: number): Promise<HTMLImageElement> {
       return new Promise((resolve) => {
-        if (imagesRef.current[idx]) {
-          return resolve(imagesRef.current[idx]!);
+        const imgs = imagesRef.current;
+        if (imgs?.[idx]) {
+          return resolve(imgs[idx]!);
         }
         const img = new Image();
         img.src = getFrameUrl(idx);
         img.onload = () => {
-          if (!isDestroyedRef.current) {
-            imagesRef.current[idx] = img;
+          if (!isDestroyedRef.current && imgs) {
+            imgs[idx] = img;
           }
           resolve(img);
         };
@@ -226,7 +231,6 @@ export function ScrollHeroBackground({ containerRef }: ScrollHeroBackgroundProps
         }`}
         style={{
           transform: "translateZ(0)",
-          willChange: "transform",
           backfaceVisibility: "hidden",
         }}
       />

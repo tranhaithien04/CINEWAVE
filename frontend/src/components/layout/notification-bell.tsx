@@ -17,13 +17,15 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { paths } from "@/routes/paths";
 import { cn } from "@/utils/cn";
 
+const notificationTimeFmt = new Intl.DateTimeFormat("vi-VN", {
+  day: "2-digit",
+  month: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 function timeLabel(iso: string) {
-  return new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
+  return notificationTimeFmt.format(new Date(iso));
 }
 
 export function NotificationBell() {

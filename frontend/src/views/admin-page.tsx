@@ -67,7 +67,7 @@ export function AdminPage() {
         {stats.map((item) => (
           <Card
             key={item.label}
-            className={`relative overflow-hidden rounded-2xl border ${item.border} bg-white/[0.02] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-500/40 hover:shadow-lg hover:shadow-cyan-500/10`}
+            className={`relative overflow-hidden rounded-2xl border ${item.border} bg-white/[0.02] backdrop-blur-xl transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:border-cyan-500/40 hover:shadow-lg hover:shadow-cyan-500/10`}
           >
             <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${item.color}`} />
             <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5">
@@ -164,7 +164,7 @@ export function AdminPage() {
                     {/* Visual Bar */}
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-500"
+                        className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-[width] duration-500"
                         style={{ width: `${percent}%` }}
                       />
                     </div>

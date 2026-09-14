@@ -148,6 +148,8 @@ export function seatPrice(base: number, type: Seat["type"]) {
   return base;
 }
 
+const vndFmt = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
+
 export function formatVnd(value: number) {
-  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value);
+  return vndFmt.format(value);
 }

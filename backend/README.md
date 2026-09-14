@@ -1,6 +1,6 @@
 # CINEWAVE Backend
 
-Express + Prisma. Tầng thư mục theo MVC/service.
+Express + MongoDB Atlas. Tầng thư mục theo MVC/service.
 
 ```text
 backend/

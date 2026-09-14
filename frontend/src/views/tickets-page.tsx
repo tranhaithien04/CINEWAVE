@@ -40,7 +40,9 @@ export function TicketsPage() {
     let cancelled = false;
     fetchMyTickets()
       .then((data) => {
-        if (!cancelled) setTickets(data.tickets);
+        if (cancelled) return;
+        setError(null);
+        setTickets(data.tickets);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -88,6 +90,7 @@ export function TicketsPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-400">Digital Wallet</p>
           <h1 className="font-display text-3xl font-black tracking-tight text-white md:text-5xl">Vé của tôi</h1>
         </div>
+        {error ? <p className="text-sm text-amber-300">{error} Đang hiển thị dữ liệu mẫu.</p> : null}
         <EmptyState title="Chưa có vé xem phim" description="Hãy chọn một bộ phim yêu thích và đặt suất để nhận vé QR tại đây." />
         <div className="text-center">
           <Button asChild className="rounded-xl">
@@ -106,6 +109,7 @@ export function TicketsPage() {
         <p className="text-xs text-gray-400">
           Bạn đang có <span className="font-bold text-cyan-300">{tickets.length}</span> vé điện tử trong ví.
         </p>
+        {error ? <p className="text-sm text-amber-300">{error} Đang hiển thị dữ liệu mẫu.</p> : null}
       </div>
 
       <div className="grid gap-5 md:grid-cols-2">
@@ -120,7 +124,7 @@ export function TicketsPage() {
             <Link
               key={ticket.code}
               href={paths.ticket(ticket.code)}
-              className="group relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-cinema-900/80 via-cinema-950/90 to-[#0c101d] p-6 shadow-xl backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-cyan-500/50 hover:shadow-2xl hover:shadow-cyan-500/15 md:flex-row"
+              className="group relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-cinema-900/80 via-cinema-950/90 to-[#0c101d] p-6 shadow-xl backdrop-blur-md transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:border-cyan-500/50 hover:shadow-2xl hover:shadow-cyan-500/15 md:flex-row"
             >
               {/* Holographic accent glow */}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-cyan-500/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />

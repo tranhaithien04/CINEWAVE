@@ -1,35 +1,28 @@
+import { NotificationModel } from "../db/models.js";
+import { toPlain, toPlainList } from "../db/mongo.js";
 import type { NotificationRecord, NotificationType } from "../models/notification.js";
-import { readJsonFile, writeJsonFile } from "./json-store.js";
-
-const FILE = "notifications.json";
-
-async function readAll() {
-  return readJsonFile<NotificationRecord[]>(FILE, []);
-}
 
 export async function listNotificationsByUser(userId: string) {
-  const items = await readAll();
-  return items
-    .filter((item) => item.userId === userId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const docs = await NotificationModel.find({ userId }).sort({ createdAt: -1 }).lean();
+  return toPlainList<NotificationRecord>(docs);
 }
 
 export async function getNotificationById(id: string) {
-  return (await readAll()).find((item) => item.id === id) ?? null;
+  const doc = await NotificationModel.findOne({ id }).lean();
+  return toPlain<NotificationRecord>(doc);
 }
 
 export async function hasNotification(userId: string, type: NotificationType, bookingId: string) {
-  const items = await readAll();
-  return items.some((item) => item.userId === userId && item.type === type && item.bookingId === bookingId);
+  const count = await NotificationModel.countDocuments({ userId, type, bookingId });
+  return count > 0;
 }
 
 export async function saveNotification(notification: NotificationRecord) {
-  const items = await readAll();
-  const index = items.findIndex((item) => item.id === notification.id);
-  if (index === -1) items.push(notification);
-  else items[index] = notification;
-  await writeJsonFile(FILE, items);
-  return notification;
+  const doc = await NotificationModel.findOneAndUpdate({ id: notification.id }, notification, {
+    new: true,
+    upsert: true,
+  }).lean();
+  return toPlain<NotificationRecord>(doc)!;
 }
 
 export async function markNotificationRead(id: string, userId: string) {
@@ -40,23 +33,16 @@ export async function markNotificationRead(id: string, userId: string) {
 }
 
 export async function markAllNotificationsRead(userId: string) {
-  const items = await readAll();
   const now = new Date().toISOString();
-  let changed = false;
-  const next = items.map((item) => {
-    if (item.userId !== userId || item.readAt) return item;
-    changed = true;
-    return { ...item, readAt: now };
-  });
-  if (changed) await writeJsonFile(FILE, next);
-  return next.filter((item) => item.userId === userId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  await NotificationModel.updateMany({ userId, readAt: null }, { readAt: now });
+  return listNotificationsByUser(userId);
 }
 
 export async function ensureNotificationSeed(userId: string, userEmail: string) {
-  const existing = await listNotificationsByUser(userId);
-  if (existing.length) return;
+  const existing = await NotificationModel.countDocuments({ userId });
+  if (existing) return;
   const now = Date.now();
-  await writeJsonFile(FILE, [
+  await NotificationModel.insertMany([
     {
       id: "nt-seed-1",
       userId,

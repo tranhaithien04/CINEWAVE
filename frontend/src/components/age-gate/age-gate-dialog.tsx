@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, Loader2, Lock, ShieldCheck, XCircle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import type { AgeRating } from "@/@types/movie";
@@ -46,19 +46,28 @@ export function AgeGateDialog({
 }) {
   const { user } = useAuth();
   const [step, setStep] = useState<GateStep>("idle");
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const age = requiredAge[rating];
 
+  useEffect(() => {
+    if (!previewFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(previewFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [previewFile]);
+
   function reset() {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(null);
+    setPreviewFile(null);
     setStep("idle");
   }
 
   function onFile(file: File | undefined) {
     if (!file) return;
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(URL.createObjectURL(file));
+    setPreviewFile(file);
     setStep("preview");
   }
 
@@ -140,7 +149,7 @@ export function AgeGateDialog({
               <li>Chụp thẳng, đủ sáng, tránh phản quang.</li>
               <li>Chỉ mặt trước · JPEG / PNG / WEBP · tối đa 5MB.</li>
             </ol>
-            <label className="relative flex cursor-pointer flex-col items-center gap-3 overflow-hidden rounded-2xl border-2 border-dashed border-cyan-500/30 bg-black/40 p-4 text-center transition-all duration-300 hover:border-cyan-400/60 hover:bg-cyan-500/5">
+            <label className="relative flex cursor-pointer flex-col items-center gap-3 overflow-hidden rounded-2xl border-2 border-dashed border-cyan-500/30 bg-black/40 p-4 text-center transition-[border-color,background-color] duration-300 hover:border-cyan-400/60 hover:bg-cyan-500/5">
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"

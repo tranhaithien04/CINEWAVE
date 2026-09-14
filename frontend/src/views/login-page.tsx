@@ -117,7 +117,7 @@ export function LoginPage() {
                 type="email"
                 autoComplete="email"
                 placeholder="ban@email.com"
-                className="rounded-xl border-white/10 bg-white/5 transition-all focus:border-cyan-400 focus:shadow-neon"
+                className="rounded-xl border-white/10 bg-white/5 transition-[border-color,box-shadow] focus:border-cyan-400 focus:shadow-neon"
                 {...register("email")}
               />
               {errors.email ? <p className="text-xs text-rose-400">{errors.email.message}</p> : null}
@@ -135,7 +135,7 @@ export function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   placeholder="Nhập mật khẩu"
-                  className="rounded-xl border-white/10 bg-white/5 pr-10 transition-all focus:border-cyan-400 focus:shadow-neon"
+                  className="rounded-xl border-white/10 bg-white/5 pr-10 transition-[border-color,box-shadow] focus:border-cyan-400 focus:shadow-neon"
                   {...register("password")}
                 />
                 <button

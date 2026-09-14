@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import type { Seat } from "@/@types/seat";
 import { SeatButton } from "@/components/seats/seat-button";
 
@@ -11,6 +13,7 @@ export function SeatMap({
   onToggle: (seat: Seat) => void;
 }) {
   const rows = [...new Set(seats.map((seat) => seat.row))];
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-white/10 bg-cinema-900/70 p-4 shadow-xl backdrop-blur-md md:p-6">
@@ -35,7 +38,7 @@ export function SeatMap({
                   <SeatButton
                     key={seat.id}
                     seat={seat}
-                    selected={selectedIds.includes(seat.id)}
+                    selected={selectedSet.has(seat.id)}
                     onToggle={onToggle}
                   />
                 ))}
