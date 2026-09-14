@@ -3,18 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, CheckCircle2, Clock, Copy, QrCode, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, CheckCircle2, Clock, Copy, ShieldCheck, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
-import { confirmPayment } from "@/api/payments";
+import { confirmPayment, createPaymentIntent, fetchPaymentStatus, type PaymentInfo } from "@/api/payments";
 import type { Booking } from "@/api/bookings";
-import { fetchBooking } from "@/api/bookings";
+import { fetchBooking, updateBookingConcessions } from "@/api/bookings";
+import { fetchConcessions, fetchShowtime, type ConcessionItem } from "@/api/catalog";
+import type { Showtime } from "@/@types/movie";
 import { AgeGateDialog, needsAgeGate } from "@/components/age-gate/age-gate-dialog";
+import { ConcessionPicker } from "@/components/booking/concession-picker";
 import { PriceBreakdown } from "@/components/booking/price-breakdown";
 import { AgeBadge } from "@/components/movies/age-badge";
 import { EmptyState, ErrorState } from "@/components/shared/state-views";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,6 +39,7 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
   const { user, loading: authLoading } = useAuth();
   const { showtimes, getMovieBySlug, getShowtimeById } = useCatalog();
   const [booking, setBooking] = useState<Booking | null>(null);
+  const [payment, setPayment] = useState<PaymentInfo | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingBooking, setLoadingBooking] = useState(true);
   const [gateOpen, setGateOpen] = useState(false);
@@ -45,7 +48,11 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
   const [ticketCode, setTicketCode] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes hold timer
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [menu, setMenu] = useState<ConcessionItem[]>([]);
+  const [comboQty, setComboQty] = useState<Record<string, number>>({});
+  const [savingCombo, setSavingCombo] = useState(false);
+  const [fetchedShow, setFetchedShow] = useState<Showtime | null>(null);
 
   useEffect(() => {
     if (timeLeft <= 0) return;
@@ -66,6 +73,37 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
     setTimeout(() => setCopiedField(null), 2000);
   }
 
+  function applyPaid(code: string) {
+    setTicketCode(code);
+    setPay("paid");
+  }
+
+  function syncExpiry(iso?: string | null) {
+    if (!iso) return;
+    const seconds = Math.max(0, Math.floor((new Date(iso).getTime() - Date.now()) / 1000));
+    setTimeLeft(seconds);
+  }
+
+  async function startSepayIntent() {
+    setPaying(true);
+    try {
+      const data = await createPaymentIntent(bookingId);
+      setBooking(data.booking);
+      setPayment(data.payment);
+      syncExpiry(data.payment.expiresAt);
+      if (data.booking.status === "PAID" || data.booking.status === "USED") {
+        applyPaid(data.booking.code);
+        return;
+      }
+      setPay("qr");
+      toast.message("Mã VietQR SePay đã sẵn sàng. Quét để chuyển khoản.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không tạo được mã thanh toán");
+    } finally {
+      setPaying(false);
+    }
+  }
+
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -79,6 +117,25 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
         if (cancelled) return;
         setBooking(data.booking);
         setLoadError(null);
+        syncExpiry(data.booking.paymentExpiresAt ?? data.booking.holdExpiresAt);
+        if (data.booking.status === "PAID" || data.booking.status === "USED") {
+          applyPaid(data.booking.code);
+        } else if (data.booking.status === "PENDING_PAYMENT") {
+          setPay("qr");
+          void createPaymentIntent(bookingId)
+            .then((intent) => {
+              if (cancelled) return;
+              setBooking(intent.booking);
+              setPayment(intent.payment);
+              syncExpiry(intent.payment.expiresAt);
+            })
+            .catch(() => {
+              /* poll will fill in */
+            });
+        }
+        const qty: Record<string, number> = {};
+        for (const line of data.booking.concessions ?? []) qty[line.id] = line.qty;
+        setComboQty(qty);
       })
       .catch((error) => {
         if (cancelled) return;
@@ -93,13 +150,89 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
     };
   }, [authLoading, bookingId, user]);
 
-  const showtime = booking ? getShowtimeById(booking.showtimeId) : (showtimes.find((item) => item.id === "st-4") ?? showtimes[0]);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchConcessions()
+      .then((data) => {
+        if (!cancelled) setMenu(data.items);
+      })
+      .catch(() => {
+        if (!cancelled) setMenu([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!booking?.showtimeId) return;
+    if (getShowtimeById(booking.showtimeId)) return;
+    let cancelled = false;
+    void fetchShowtime(booking.showtimeId)
+      .then((data) => {
+        if (!cancelled) setFetchedShow(data.showtime);
+      })
+      .catch(() => {
+        /* keep fallback */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [booking?.showtimeId, getShowtimeById]);
+
+  async function changeCombo(id: string, next: number) {
+    const qty = Math.max(0, Math.min(8, next));
+    const preview = { ...comboQty, [id]: qty };
+    setComboQty(preview);
+    setSavingCombo(true);
+    try {
+      const items = Object.entries(preview)
+        .filter(([, count]) => count > 0)
+        .map(([itemId, count]) => ({ id: itemId, qty: count }));
+      const data = await updateBookingConcessions(bookingId, items);
+      setBooking(data.booking);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không cập nhật được combo");
+    } finally {
+      setSavingCombo(false);
+    }
+  }
+
+  useEffect(() => {
+    if (pay !== "qr" || !bookingId) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const data = await fetchPaymentStatus(bookingId);
+        if (cancelled) return;
+        setBooking(data.booking);
+        if (data.payment) setPayment(data.payment);
+        if (data.paid) {
+          applyPaid(data.booking.code);
+          toast.success("SePay đã nhận tiền. Vé đã được phát hành.");
+        }
+      } catch {
+        /* keep polling */
+      }
+    };
+    void poll();
+    const timer = setInterval(() => void poll(), 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [pay, bookingId]);
+
+  const catalogShow = booking ? getShowtimeById(booking.showtimeId) : null;
+  const showtime = catalogShow ?? fetchedShow ?? (showtimes.find((item) => item.id === "st-4") ?? showtimes[0]);
   const movie = showtime ? getMovieBySlug(showtime.movieSlug) : null;
   const seats = useMemo(() => {
     const labels = booking?.seats?.length ? booking.seats : ["F1", "F2"];
     return labels.map((label) => ({ label, type: seatTypeFromLabel(label) }));
   }, [booking]);
-  const total = booking?.total ?? seats.reduce((sum, seat) => sum + seatPrice(showtime?.priceBase ?? 0, seat.type), 0);
+  const total = payment?.amount ?? booking?.total ?? seats.reduce((sum, seat) => sum + seatPrice(showtime?.priceBase ?? 0, seat.type), 0);
+  const transferContent = payment?.content ?? booking?.paymentCode ?? booking?.code ?? bookingId;
+  const isSepay = (payment?.provider ?? booking?.paymentProvider) !== "MOCK";
 
   useEffect(() => {
     if (!movie) return;
@@ -146,6 +279,17 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
     if (!showtime || !movie) return;
     setPaying(true);
     try {
+      if (isSepay) {
+        const data = await fetchPaymentStatus(bookingId);
+        setBooking(data.booking);
+        if (data.paid) {
+          applyPaid(data.booking.code);
+          toast.success("Thanh toán thành công! Vé đã được phát hành.");
+        } else {
+          toast.message("Chưa nhận được tiền từ SePay. Quét QR và chuyển đúng nội dung.");
+        }
+        return;
+      }
       const data = await confirmPayment({
         bookingId,
         showtimeId: showtime.id,
@@ -153,8 +297,7 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
         seats: seats.map((seat) => seat.label),
         total,
       });
-      setTicketCode(data.booking.code);
-      setPay("paid");
+      applyPaid(data.booking.code);
       toast.success("Thanh toán thành công! Vé đã được phát hành.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Thanh toán thất bại");
@@ -165,32 +308,72 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
 
   const orderCode = booking?.code ?? bookingId;
   const showDate = new Date(showtime.startsAt);
+  const seatsPath = paths.seats(showtime.id);
+  const canGoBack = pay !== "paid";
+  const backLabel = pay === "qr" ? "Quay lại bước trước" : "Quay lại chọn ghế";
+
+  function goBack() {
+    if (!canGoBack) return;
+    if (gateOpen) {
+      setGateOpen(false);
+      return;
+    }
+    if (pay === "qr") {
+      setPay("idle");
+      return;
+    }
+    router.push(seatsPath);
+  }
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8 md:py-12">
-      {/* Steps Indicator */}
+      {canGoBack ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="-mb-2 w-fit px-2 text-gray-400 hover:text-white"
+          onClick={goBack}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {backLabel}
+        </Button>
+      ) : null}
+
       <div className="flex items-center justify-between gap-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4 text-xs backdrop-blur-xl">
-        <div className="flex items-center gap-2 font-medium text-cyan-400">
+        <button
+          type="button"
+          className="flex items-center gap-2 font-medium text-cyan-400 disabled:cursor-default"
+          disabled={!canGoBack}
+          onClick={() => router.push(seatsPath)}
+        >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cyan-500/20 text-[11px] font-bold">
             ✓
           </span>
           <span className="hidden sm:inline">1. Chọn ghế</span>
           <span className="sm:hidden">Ghế</span>
-        </div>
+        </button>
         <span className="h-px flex-1 bg-cyan-500/30" />
-        <div className={`flex items-center gap-2 font-medium ${verified ? "text-cyan-400" : "text-amber-400"}`}>
+        <button
+          type="button"
+          className={`flex items-center gap-2 font-medium ${verified ? "text-cyan-400" : "text-amber-400"} disabled:cursor-default`}
+          disabled={!canGoBack || pay === "idle"}
+          onClick={() => {
+            if (pay === "qr") setPay("idle");
+          }}
+        >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[11px] font-bold">
             {verified ? "✓" : "2"}
           </span>
           <span className="hidden sm:inline">2. Xác thực CCCD</span>
           <span className="sm:hidden">CCCD</span>
-        </div>
+        </button>
         <span className="h-px flex-1 bg-white/10" />
         <div className={`flex items-center gap-2 font-medium ${pay !== "idle" ? "text-cyan-400" : "text-gray-400"}`}>
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[11px] font-bold">
             3
           </span>
-          <span className="hidden sm:inline">3. VietQR 247</span>
+          <span className="hidden sm:inline">3. VietQR SePay</span>
           <span className="sm:hidden">QR</span>
         </div>
         <span className="h-px flex-1 bg-white/10" />
@@ -203,7 +386,6 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
         </div>
       </div>
 
-      {/* Header & Countdown */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-cyan-400">
@@ -211,16 +393,15 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
           </p>
           <h1 className="font-display text-3xl font-bold tracking-tight text-white md:text-4xl">Thanh toán vé xem phim</h1>
         </div>
-        {pay !== "paid" && (
+        {pay !== "paid" && timeLeft > 0 ? (
           <div className="inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-1.5 text-xs font-semibold text-amber-300">
             <Clock className="h-3.5 w-3.5 animate-spin text-amber-400" />
             <span>Ghế giữ còn: </span>
             <span className="font-mono text-sm font-bold text-white">{formatCountdown(timeLeft)}</span>
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* Order Summary Card */}
       <Card className="overflow-hidden rounded-2xl border-white/10 bg-white/[0.02] backdrop-blur-xl shadow-2xl shadow-cyan-500/5">
         <div className="relative p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-white/5 pb-4">
@@ -250,12 +431,17 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
           </div>
 
           <div className="pt-4">
-            <PriceBreakdown seats={seats} priceBase={showtime.priceBase} />
+            <PriceBreakdown seats={seats} priceBase={showtime.priceBase} concessions={booking?.concessions ?? []} />
           </div>
         </div>
       </Card>
 
-      {/* Age verification alert if needed */}
+      {pay === "idle" && menu.length > 0 ? (
+        <Card className="rounded-2xl border-white/10 bg-white/[0.02] p-5 backdrop-blur-xl">
+          <ConcessionPicker items={menu} qty={comboQty} disabled={savingCombo || paying} onChange={(id, next) => void changeCombo(id, next)} />
+        </Card>
+      ) : null}
+
       {needsAgeGate(movie.rating) && !verified ? (
         <Alert className="rounded-2xl border-cyan-500/30 bg-cyan-500/5 backdrop-blur-xl">
           <ShieldCheck className="h-5 w-5 text-cyan-400" />
@@ -266,52 +452,61 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
         </Alert>
       ) : null}
 
-      {/* VietQR Payment Screen */}
       {pay === "qr" ? (
         <Card className="rounded-2xl border-cyan-500/30 bg-gradient-to-b from-cyan-950/20 via-white/[0.02] to-transparent p-6 backdrop-blur-xl shadow-2xl shadow-cyan-500/10">
           <CardHeader className="p-0 text-center pb-6 border-b border-white/5">
             <div className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-cyan-400 mb-1">
               <Sparkles className="h-3.5 w-3.5" />
-              Cổng thanh toán tự động VietQR 247
+              {isSepay ? "Cổng thanh toán SePay · VietQR 247" : "Chế độ demo · chưa cấu hình SePay"}
             </div>
             <CardTitle className="text-xl text-white">Quét mã QR để hoàn tất đặt vé</CardTitle>
-            <p className="text-xs text-muted-foreground">Hỗ trợ tất cả ứng dụng ngân hàng và ví điện tử tại Việt Nam</p>
+            <p className="text-xs text-muted-foreground">
+              {isSepay
+                ? "Hệ thống tự xác nhận vé khi SePay báo đã nhận tiền."
+                : "Hỗ trợ tất cả ứng dụng ngân hàng và ví điện tử tại Việt Nam"}
+            </p>
           </CardHeader>
 
           <CardContent className="p-0 pt-6">
             <div className="grid gap-6 md:grid-cols-2 md:items-center">
-              {/* QR Code Container */}
               <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] p-6">
                 <div className="relative flex h-52 w-52 items-center justify-center rounded-2xl bg-white p-3 text-zinc-950 shadow-2xl shadow-cyan-500/20">
-                  <QrCode className="h-44 w-44" />
-                  {/* Subtle pulsing cyber scan dot */}
+                  {payment?.qrUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={payment.qrUrl} alt="VietQR SePay" className="h-full w-full object-contain" />
+                  ) : (
+                    <p className="px-4 text-center text-xs text-zinc-600">
+                      Chưa có STK SePay. Điền SEPAY_ACCOUNT_NUMBER trong backend/.env
+                    </p>
+                  )}
                   <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
                     <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-cyan-500" />
                   </span>
                 </div>
                 <p className="mt-3 text-[11px] font-mono uppercase text-gray-400 tracking-wider">
-                  QUÉT BẰNG APP NGÂN HÀNG HOẶC MOMO
+                  QUÉT BẰNG APP NGÂN HÀNG
                 </p>
               </div>
 
-              {/* Bank Transfer Details with Copy buttons */}
               <div className="space-y-3 text-xs">
                 <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Ngân hàng thụ hưởng</span>
-                  <p className="font-semibold text-white mt-0.5">MB Bank (Ngân hàng TMCP Quân Đội)</p>
+                  <p className="font-semibold text-white mt-0.5">{payment?.bankLabel ?? "MB Bank"}</p>
                 </div>
 
                 <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-3">
                   <div>
                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Số tài khoản</span>
-                    <p className="font-mono text-sm font-bold text-cyan-300 mt-0.5">0909888999</p>
+                    <p className="font-mono text-sm font-bold text-cyan-300 mt-0.5">{payment?.accountNumber ?? "—"}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{payment?.accountName}</p>
                   </div>
                   <Button
                     size="sm"
                     variant="ghost"
                     className="h-8 rounded-lg text-xs hover:bg-white/10"
-                    onClick={() => copyText("0909888999", "stk")}
+                    onClick={() => copyText(payment?.accountNumber ?? "", "stk")}
+                    disabled={!payment?.accountNumber}
                   >
                     {copiedField === "stk" ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-gray-400" />}
                   </Button>
@@ -335,13 +530,13 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
                 <div className="flex items-center justify-between rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3">
                   <div>
                     <span className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Nội dung chuyển khoản (Bắt buộc)</span>
-                    <p className="font-mono text-sm font-bold text-white mt-0.5">{orderCode}</p>
+                    <p className="font-mono text-sm font-bold text-white mt-0.5">{transferContent}</p>
                   </div>
                   <Button
                     size="sm"
                     variant="ghost"
                     className="h-8 rounded-lg text-xs hover:bg-cyan-500/20"
-                    onClick={() => copyText(orderCode, "msg")}
+                    onClick={() => copyText(transferContent, "msg")}
                   >
                     {copiedField === "msg" ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-cyan-300" />}
                   </Button>
@@ -351,22 +546,33 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-white/5 pt-6">
               <p className="text-xs text-muted-foreground">
-                Hệ thống tự động kích hoạt vé sau 2-5 giây khi nhận được tiền.
+                {isSepay
+                  ? "Trang này tự kiểm tra mỗi 3 giây. Không đóng tab cho đến khi vé được kích hoạt."
+                  : "Chế độ demo: bấm xác nhận để phát hành vé ngay."}
               </p>
-              <Button
-                size="lg"
-                className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 font-semibold text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-teal-500"
-                disabled={paying}
-                onClick={() => void onConfirmPaid()}
-              >
-                {paying ? "Hệ thống đang xác nhận tiền..." : "Tôi đã chuyển khoản thành công"}
-              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button type="button" variant="outline" size="lg" className="rounded-xl" onClick={goBack}>
+                  <ArrowLeft className="h-4 w-4" />
+                  Quay lại bước trước
+                </Button>
+                <Button
+                  size="lg"
+                  className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 font-semibold text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-teal-500"
+                  disabled={paying}
+                  onClick={() => void onConfirmPaid()}
+                >
+                  {paying
+                    ? "Đang kiểm tra giao dịch..."
+                    : isSepay
+                      ? "Tôi đã chuyển khoản — kiểm tra lại"
+                      : "Tôi đã chuyển khoản thành công"}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
       ) : null}
 
-      {/* Paid Screen */}
       {pay === "paid" ? (
         <Card className="rounded-2xl border-emerald-500/40 bg-gradient-to-b from-emerald-950/20 to-transparent p-8 text-center backdrop-blur-xl shadow-2xl shadow-emerald-500/10">
           <CardContent className="flex flex-col items-center gap-4 p-0">
@@ -393,22 +599,27 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
         </Card>
       ) : null}
 
-      {/* Idle CTA */}
       {pay === "idle" ? (
-        <Button
-          size="lg"
-          className="h-12 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 font-semibold text-white shadow-xl shadow-cyan-500/20 transition-[transform,box-shadow] duration-300 hover:scale-[1.01] hover:from-cyan-400 hover:to-blue-500"
-          onClick={() => {
-            if (needsAgeGate(movie.rating) && !verified) {
-              setGateOpen(true);
-              return;
-            }
-            setPay("qr");
-            toast.message("Mã VietQR đã sẵn sàng. Bạn vui lòng quét để thanh toán.");
-          }}
-        >
-          {verified ? "Tạo mã VietQR thanh toán 247" : "Xác minh độ tuổi CCCD rồi thanh toán"}
-        </Button>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button type="button" variant="outline" size="lg" className="h-12 rounded-xl sm:w-auto" onClick={goBack}>
+            <ArrowLeft className="h-4 w-4" />
+            Quay lại chọn ghế
+          </Button>
+          <Button
+            size="lg"
+            className="h-12 flex-1 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 font-semibold text-white shadow-xl shadow-cyan-500/20 transition-[transform,box-shadow] duration-300 hover:scale-[1.01] hover:from-cyan-400 hover:to-blue-500"
+            disabled={paying}
+            onClick={() => {
+              if (needsAgeGate(movie.rating) && !verified) {
+                setGateOpen(true);
+                return;
+              }
+              void startSepayIntent();
+            }}
+          >
+            {verified ? "Tạo mã VietQR SePay" : "Xác minh độ tuổi CCCD rồi thanh toán"}
+          </Button>
+        </div>
       ) : null}
 
       <AgeGateDialog
@@ -419,7 +630,7 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
         onPassed={() => {
           setVerified(true);
           setGateOpen(false);
-          setPay("qr");
+          void startSepayIntent();
         }}
       />
     </main>
@@ -427,4 +638,3 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
 }
 
 export default CheckoutPage;
-

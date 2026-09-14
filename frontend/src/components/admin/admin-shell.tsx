@@ -3,7 +3,21 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { Clapperboard, Film, LayoutDashboard, Ticket, Users, Wallet } from "lucide-react";
+import {
+  Bell,
+  Building2,
+  ChartColumn,
+  Clapperboard,
+  Film,
+  LayoutDashboard,
+  LayoutGrid,
+  Popcorn,
+  ShieldCheck,
+  Ticket,
+  Users,
+  Wallet,
+  Settings2,
+} from "lucide-react";
 
 import { EmptyState } from "@/components/shared/state-views";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,10 +29,22 @@ const nav = [
   { href: paths.admin, label: "Tổng quan", icon: LayoutDashboard },
   { href: paths.adminMovies, label: "Phim", icon: Film },
   { href: paths.adminShowtimes, label: "Suất chiếu", icon: Clapperboard },
+  { href: paths.adminCinemas, label: "Rạp", icon: Building2 },
+  { href: paths.adminRooms, label: "Phòng ghế", icon: LayoutGrid },
+  { href: paths.adminConcessions, label: "F&B", icon: Popcorn },
   { href: paths.adminBookings, label: "Đơn hàng", icon: Wallet },
   { href: paths.adminTickets, label: "Vé", icon: Ticket },
+  { href: paths.adminAgeVerifications, label: "Xác minh tuổi", icon: ShieldCheck },
+  { href: paths.adminReports, label: "Báo cáo", icon: ChartColumn },
+  { href: paths.adminNotifications, label: "Thông báo", icon: Bell },
   { href: paths.adminUsers, label: "Người dùng", icon: Users },
+  { href: paths.adminSystem, label: "Hệ thống", icon: Settings2 },
 ];
+
+function isActive(pathname: string, href: string) {
+  if (href === paths.admin) return pathname === paths.admin;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -55,7 +81,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-8 md:flex-row md:py-10">
       <aside className="shrink-0 md:w-64">
         <div className="sticky top-24 space-y-6 rounded-2xl border border-white/10 bg-white/[0.02] p-4 backdrop-blur-xl">
-          {/* Cyber Header */}
           <div className="border-b border-white/5 pb-4">
             <div className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
@@ -69,10 +94,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <p className="mt-1 text-xs text-muted-foreground">Trung tâm điều hành CineWave</p>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex gap-1.5 overflow-x-auto pb-1 md:flex-col md:overflow-visible md:pb-0">
+          <nav className="flex gap-1.5 overflow-x-auto pb-1 md:max-h-[70vh] md:flex-col md:overflow-y-auto md:overflow-x-visible md:pb-0">
             {nav.map((item) => {
-              const active = pathname === item.href;
+              const active = isActive(pathname || "", item.href);
               return (
                 <Link
                   key={item.href}
@@ -100,7 +124,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
             })}
           </nav>
 
-          {/* Admin User Info */}
           <div className="hidden border-t border-white/5 pt-4 md:block">
             <div className="flex items-center gap-3 rounded-xl bg-white/[0.03] p-2.5">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 font-display text-xs font-bold text-white shadow-md shadow-cyan-500/20">

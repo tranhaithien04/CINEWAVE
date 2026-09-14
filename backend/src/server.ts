@@ -8,8 +8,15 @@ import { connectMongo } from "./db/mongo.js";
 import { createApp } from "./helpers/create-app.js";
 import { startBackgroundJobs } from "./helpers/jobs.js";
 import { ensureAppSeed } from "./helpers/seed.js";
+import { loadOverrides } from "./helpers/system-settings.js";
 
 const port = Number(process.env.PORT ?? 4000);
+
+await loadOverrides().then((overrides) => {
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value !== undefined) process.env[key] = value;
+  }
+});
 
 await connectMongo();
 

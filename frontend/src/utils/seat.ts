@@ -3,7 +3,7 @@ import type { Seat } from "@/@types/seat";
 export const MAX_SEATS_PER_BOOKING = 8;
 
 export function isSeatTaken(seat: Seat) {
-  return seat.state === "SOLD" || seat.state === "BLOCKED" || seat.state === "HELD";
+  return seat.state === "SOLD" || seat.state === "BLOCKED" || seat.state === "HELD" || seat.state === "MINE_HELD";
 }
 
 export function couplePartner(seats: Seat[], seat: Seat) {

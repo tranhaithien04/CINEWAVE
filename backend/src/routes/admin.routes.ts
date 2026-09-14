@@ -25,6 +25,23 @@ adminRouter.patch("/showtimes/:id", adminController.updateShowtime);
 adminRouter.delete("/showtimes/:id", adminController.deleteShowtime);
 adminRouter.post("/showtimes/:id/close", adminController.closeShowtime);
 
+adminRouter.get("/rooms", adminController.listRooms);
+adminRouter.patch("/rooms", adminController.updateRoomBlockedSeats);
+
+adminRouter.get("/cinemas", adminController.listCinemas);
+
+adminRouter.get("/concessions", adminController.listConcessions);
+adminRouter.post("/concessions", adminController.upsertConcession);
+adminRouter.patch("/concessions/:id", adminController.updateConcession);
+adminRouter.delete("/concessions/:id", adminController.deleteConcession);
+
+adminRouter.get("/age-verifications", adminController.listAgeVerifications);
+adminRouter.post("/notifications/broadcast", adminController.broadcast);
+
+adminRouter.get("/system/settings", adminController.getSystemSettings);
+adminRouter.patch("/system/settings", adminController.patchSystemSettings);
+adminRouter.get("/system/status", adminController.getSystemStatus);
+
 adminRouter.get("/bookings", adminController.listBookings);
 adminRouter.post("/bookings/:id/cancel", adminController.cancelBooking);
 adminRouter.post("/bookings/:id/refund", adminController.refundBooking);

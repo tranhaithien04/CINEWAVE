@@ -11,6 +11,13 @@ export type AdminOverview = {
   revenue: number;
 };
 
+export type ConcessionLine = {
+  id: string;
+  qty: number;
+  name: string;
+  unitPrice: number;
+};
+
 export type AdminBooking = {
   id: string;
   code: string;
@@ -19,14 +26,62 @@ export type AdminBooking = {
   seats: string[];
   status: string;
   total: number;
+  seatTotal?: number;
+  concessionTotal?: number;
+  concessions?: ConcessionLine[];
   userEmail: string | null;
   createdAt: string;
+  holdExpiresAt?: string | null;
+  paymentCode?: string | null;
+  paymentExpiresAt?: string | null;
+  checkedInAt?: string | null;
+  cancelledAt?: string | null;
+  refundExpiresAt?: string | null;
+  refundedAt?: string | null;
+  canCancel?: boolean;
+  canReschedule?: boolean;
+  qr?: { code: string; sig: string; text: string } | null;
+  refundQr?: { code: string; sig: string; text: string } | null;
 };
 
 export type RevenueReport = {
   total: number;
   paidCount: number;
+  seatRevenue?: number;
+  concessionRevenue?: number;
   byMovie: Array<{ movieSlug: string; total: number }>;
+  byCinema?: Array<{ cinema: string; total: number }>;
+};
+
+export type AdminConcession = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  active: boolean;
+};
+
+export type AdminCinema = {
+  name: string;
+  roomCount: number;
+  showtimeCount: number;
+  rooms: string[];
+};
+
+export type AdminAgeVerification = {
+  id: string;
+  userId: string;
+  bookingId: string | null;
+  showtimeId: string | null;
+  movieSlug: string | null;
+  rating: string | null;
+  requiredAge: number;
+  computedAge: number | null;
+  passed: boolean;
+  confidence: number | null;
+  idMasked: string | null;
+  failureReason: string | null;
+  createdAt: string;
 };
 
 export type MovieInput = {
@@ -62,6 +117,14 @@ export type ShowtimeInput = {
   startsAt: string;
   priceBase: number;
   closed?: boolean;
+  blockedSeats?: string[];
+};
+
+export type AdminRoom = {
+  cinema: string;
+  room: string;
+  blockedSeats: string[];
+  showtimeCount: number;
 };
 
 export function fetchAdminOverview() {
@@ -134,6 +197,24 @@ export function closeAdminShowtime(id: string) {
   return api<{ showtime: Showtime }>(`/admin/showtimes/${id}/close`, { method: "POST" });
 }
 
+export function fetchAdminRooms() {
+  return api<{ rooms: AdminRoom[] }>("/admin/rooms");
+}
+
+export function updateAdminRoomBlockedSeats(body: {
+  cinema: string;
+  room: string;
+  blockedSeats: string[];
+}) {
+  return api<{
+    cinema: string;
+    room: string;
+    blockedSeats: string[];
+    updatedCount: number;
+    showtimes: Showtime[];
+  }>("/admin/rooms", { method: "PATCH", body });
+}
+
 export function fetchAdminBookings() {
   return api<{ bookings: AdminBooking[] }>("/admin/bookings");
 }
@@ -160,4 +241,83 @@ export function fetchAdminUsers() {
 
 export function changeAdminUserRole(id: string, role: AuthUser["role"]) {
   return api<{ user: AuthUser }>(`/admin/users/${id}`, { method: "PATCH", body: { role } });
+}
+
+export function fetchAdminCinemas() {
+  return api<{ cinemas: AdminCinema[] }>("/admin/cinemas");
+}
+
+export function fetchAdminConcessions() {
+  return api<{ items: AdminConcession[] }>("/admin/concessions");
+}
+
+export function createAdminConcession(body: Omit<AdminConcession, "id"> & { id?: string }) {
+  return api<{ item: AdminConcession }>("/admin/concessions", { method: "POST", body });
+}
+
+export function updateAdminConcession(id: string, body: Partial<AdminConcession>) {
+  return api<{ item: AdminConcession }>(`/admin/concessions/${id}`, { method: "PATCH", body });
+}
+
+export function deleteAdminConcession(id: string) {
+  return api<{ ok: boolean }>(`/admin/concessions/${id}`, { method: "DELETE" });
+}
+
+export function fetchAdminAgeVerifications() {
+  return api<{ verifications: AdminAgeVerification[] }>("/admin/age-verifications");
+}
+
+export function broadcastAdminNotification(body: { title: string; body: string; href?: string }) {
+  return api<{ sent: number; totalUsers: number }>("/admin/notifications/broadcast", {
+    method: "POST",
+    body,
+  });
+}
+
+export type SystemSettingRow = {
+  key: string;
+  group: string;
+  label: string;
+  description: string;
+  sensitivity: "public" | "secret" | "locked";
+  editable: boolean;
+  hotReload: boolean;
+  configured: boolean;
+  value: string | null;
+  hint: string;
+  source: "env" | "override";
+};
+
+export type SystemStatus = {
+  nodeEnv: string;
+  uptimeSec: number;
+  checks: Array<{ id: string; label: string; ok: boolean }>;
+};
+
+export type SystemSettingsAudit = {
+  at: string;
+  adminId: string;
+  adminEmail: string;
+  key: string;
+  action: "update" | "clear";
+};
+
+export function fetchAdminSystemSettings() {
+  return api<{
+    settings: SystemSettingRow[];
+    status: SystemStatus;
+    audit: SystemSettingsAudit[];
+    security: { note: string; requirePasswordForSecrets: boolean };
+  }>("/admin/system/settings");
+}
+
+export function updateAdminSystemSettings(body: {
+  settings: Record<string, string | null>;
+  confirmPassword: string;
+}) {
+  return api<{
+    changed: string[];
+    settings: SystemSettingRow[];
+    status: SystemStatus;
+  }>("/admin/system/settings", { method: "PATCH", body });
 }

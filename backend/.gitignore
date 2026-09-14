@@ -7,4 +7,7 @@ data/catalog.json
 data/bookings.json
 data/notifications.json
 data/age-verifications.json
+data/concessions.json
+data/system-settings.json
+data/system-settings-audit.json
 uploads

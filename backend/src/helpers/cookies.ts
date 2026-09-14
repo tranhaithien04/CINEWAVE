@@ -2,6 +2,8 @@ import type { CookieOptions, Response } from "express";
 
 export const ACCESS_COOKIE = "cw_access";
 export const REFRESH_COOKIE = "cw_refresh";
+export const GOOGLE_STATE_COOKIE = "cw_google_state";
+export const GOOGLE_NEXT_COOKIE = "cw_google_next";
 
 const baseCookie: CookieOptions = {
   httpOnly: true,
@@ -13,6 +15,16 @@ const baseCookie: CookieOptions = {
 export function setAuthCookies(res: Response, tokens: { accessToken: string; refreshToken: string }) {
   res.cookie(ACCESS_COOKIE, tokens.accessToken, { ...baseCookie, maxAge: 15 * 60 * 1000 });
   res.cookie(REFRESH_COOKIE, tokens.refreshToken, { ...baseCookie, maxAge: 7 * 24 * 60 * 60 * 1000 });
+}
+
+export function setGoogleOAuthCookies(res: Response, state: string, nextPath: string) {
+  res.cookie(GOOGLE_STATE_COOKIE, state, { ...baseCookie, maxAge: 10 * 60 * 1000 });
+  res.cookie(GOOGLE_NEXT_COOKIE, nextPath, { ...baseCookie, maxAge: 10 * 60 * 1000 });
+}
+
+export function clearGoogleOAuthCookies(res: Response) {
+  res.clearCookie(GOOGLE_STATE_COOKIE, { ...baseCookie, maxAge: 0 });
+  res.clearCookie(GOOGLE_NEXT_COOKIE, { ...baseCookie, maxAge: 0 });
 }
 
 export function clearAuthCookies(res: Response) {

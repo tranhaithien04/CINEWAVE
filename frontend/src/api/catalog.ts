@@ -1,4 +1,5 @@
 import type { Movie, Showtime } from "@/@types/movie";
+import type { Seat } from "@/@types/seat";
 
 import { api } from "./client";
 
@@ -30,4 +31,21 @@ export function fetchShowtimes(movieSlug?: string) {
 
 export function fetchShowtime(id: string) {
   return api<{ showtime: Showtime }>(`/showtimes/${id}`);
+}
+
+export function fetchShowtimeSeats(id: string) {
+  return api<{ showtimeId: string; blockedSeats?: string[]; seats: Seat[] }>(
+    `/showtimes/${encodeURIComponent(id)}/seats`,
+  );
+}
+
+export type ConcessionItem = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+};
+
+export function fetchConcessions() {
+  return api<{ items: ConcessionItem[] }>("/concessions");
 }

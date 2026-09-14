@@ -15,8 +15,15 @@ import {
 import { listUsers, updateUser } from "../helpers/user-store.js";
 import { toPublicUser } from "../models/user.js";
 import { DomainError } from "../models/errors.js";
-import { parseMovieInput, parseShowtimeInput, parseUserRole, slugify } from "../validators/admin.js";
+import { parseBroadcastInput, parseConcessionInput, parseMovieInput, parseRoomBlockedInput, parseShowtimeInput, parseUserRole, slugify } from "../validators/admin.js";
+import {
+  deleteConcessionItem,
+  listConcessionMenu,
+  saveConcessionItem,
+} from "../helpers/concessions.js";
+import { listAgeVerifications } from "../helpers/age-verification-store.js";
 import { notifyUser } from "./notification.service.js";
+import { checkInTicket as checkInPaidTicket } from "./ticket.service.js";
 
 export async function getOverview() {
   const [movies, showtimes, bookings, users] = await Promise.all([
@@ -155,15 +162,7 @@ export async function refundBooking(id: string) {
 }
 
 export async function checkInTicket(code: string) {
-  const booking = await getBookingByCode(code);
-  if (!booking) throw new DomainError("NOT_FOUND", "Không tìm thấy vé", 404);
-  if (booking.status === "USED") {
-    throw new DomainError("ALREADY_CHECKED_IN", "Vé đã check-in");
-  }
-  if (booking.status !== "PAID") {
-    throw new DomainError("FORBIDDEN_BOOKING", "Vé chưa thanh toán hoặc đã hủy");
-  }
-  return saveBooking({ ...booking, status: "USED" });
+  return checkInPaidTicket(code);
 }
 
 export async function listAdminUsers() {
@@ -178,17 +177,144 @@ export async function changeUserRole(id: string, body: unknown) {
 }
 
 export async function revenueReport() {
-  const bookings = await listBookings();
+  const [bookings, showtimes] = await Promise.all([listBookings(), listShowtimes()]);
   const counted = bookings.filter((item) => item.status === "PAID" || item.status === "USED");
+  const showById = new Map(showtimes.map((show) => [show.id, show]));
   const byMovie = new Map<string, number>();
+  const byCinema = new Map<string, number>();
+  let seatRevenue = 0;
+  let concessionRevenue = 0;
+
   for (const item of counted) {
     byMovie.set(item.movieSlug, (byMovie.get(item.movieSlug) ?? 0) + item.total);
+    const cinema = showById.get(item.showtimeId)?.cinema ?? "Khác";
+    byCinema.set(cinema, (byCinema.get(cinema) ?? 0) + item.total);
+    seatRevenue += item.seatTotal ?? item.total;
+    concessionRevenue += item.concessionTotal ?? 0;
   }
+
   return {
     total: counted.reduce((sum, item) => sum + item.total, 0),
     paidCount: counted.length,
-    byMovie: [...byMovie.entries()].map(([movieSlug, total]) => ({ movieSlug, total })),
+    seatRevenue,
+    concessionRevenue,
+    byMovie: [...byMovie.entries()]
+      .map(([movieSlug, total]) => ({ movieSlug, total }))
+      .sort((a, b) => b.total - a.total),
+    byCinema: [...byCinema.entries()]
+      .map(([cinema, total]) => ({ cinema, total }))
+      .sort((a, b) => b.total - a.total),
   };
+}
+
+export async function listRooms() {
+  const showtimes = await listShowtimes();
+  const rooms = new Map<
+    string,
+    { cinema: string; room: string; blockedSeats: string[]; showtimeCount: number }
+  >();
+  for (const show of showtimes) {
+    const key = `${show.cinema}::${show.room}`;
+    const current = rooms.get(key);
+    if (!current) {
+      rooms.set(key, {
+        cinema: show.cinema,
+        room: show.room,
+        blockedSeats: [...(show.blockedSeats ?? [])],
+        showtimeCount: 1,
+      });
+      continue;
+    }
+    current.showtimeCount += 1;
+  }
+  return [...rooms.values()].sort((a, b) =>
+    a.cinema === b.cinema ? a.room.localeCompare(b.room) : a.cinema.localeCompare(b.cinema),
+  );
+}
+
+export async function listCinemas() {
+  const rooms = await listRooms();
+  const map = new Map<string, { name: string; roomCount: number; showtimeCount: number; rooms: string[] }>();
+  for (const room of rooms) {
+    const current = map.get(room.cinema);
+    if (!current) {
+      map.set(room.cinema, {
+        name: room.cinema,
+        roomCount: 1,
+        showtimeCount: room.showtimeCount,
+        rooms: [room.room],
+      });
+      continue;
+    }
+    current.roomCount += 1;
+    current.showtimeCount += room.showtimeCount;
+    current.rooms.push(room.room);
+  }
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function updateRoomBlockedSeats(body: unknown) {
+  const input = parseRoomBlockedInput(body);
+  const showtimes = await listShowtimes();
+  const matched = showtimes.filter(
+    (show) => show.cinema === input.cinema && show.room === input.room,
+  );
+  if (!matched.length) {
+    throw new DomainError("NOT_FOUND", "Không tìm thấy phòng chiếu nào khớp", 404);
+  }
+  const updated = [];
+  for (const show of matched) {
+    updated.push(await saveShowtime({ ...show, blockedSeats: input.blockedSeats }));
+  }
+  return {
+    cinema: input.cinema,
+    room: input.room,
+    blockedSeats: input.blockedSeats,
+    updatedCount: updated.length,
+    showtimes: updated,
+  };
+}
+
+export async function listAdminConcessions() {
+  return listConcessionMenu(true);
+}
+
+export async function upsertAdminConcession(body: unknown) {
+  const input = parseConcessionInput(body);
+  try {
+    return await saveConcessionItem(input);
+  } catch {
+    throw new DomainError("VALIDATION_ERROR", "Tên và giá combo không hợp lệ");
+  }
+}
+
+export async function removeAdminConcession(id: string) {
+  if (!(await deleteConcessionItem(id))) {
+    throw new DomainError("NOT_FOUND", "Không tìm thấy món F&B", 404);
+  }
+  return { ok: true };
+}
+
+export async function listAdminAgeVerifications() {
+  return listAgeVerifications();
+}
+
+export async function broadcastNotification(body: unknown) {
+  const input = parseBroadcastInput(body);
+  const users = await listUsers();
+  let sent = 0;
+  for (const user of users) {
+    const note = await notifyUser({
+      userId: user.id,
+      type: "ADMIN_BROADCAST",
+      title: input.title,
+      body: input.body,
+      href: input.href,
+      dedupe: false,
+    });
+    if (note) sent += 1;
+  }
+  return { sent, totalUsers: users.length };
 }
 
 export { listBookings, listMovies, listShowtimes };

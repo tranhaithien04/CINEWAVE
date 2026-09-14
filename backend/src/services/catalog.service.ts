@@ -1,6 +1,9 @@
 import { getMovieBySlug, getShowtimeById, listMovies, listShowtimes } from "../helpers/catalog-store.js";
+import { listConcessionMenu } from "../helpers/concessions.js";
 import { DomainError } from "../models/errors.js";
 import { listSimilarMovies } from "./movie-import.service.js";
+import { listShowtimeSeats } from "./booking.service.js";
+import { findUserById } from "../helpers/user-store.js";
 
 export async function listPublicMovies() {
   return listMovies();
@@ -34,4 +37,13 @@ export async function getPublicShowtime(id: string) {
 export async function listPublicCinemas() {
   const showtimes = await listShowtimes();
   return [...new Set(showtimes.map((show) => show.cinema))].map((name) => ({ name }));
+}
+
+export async function listPublicSeats(showtimeId: string, userId?: string) {
+  const email = userId ? (await findUserById(userId))?.email : null;
+  return listShowtimeSeats(showtimeId, email);
+}
+
+export async function listConcessions() {
+  return listConcessionMenu(false);
 }

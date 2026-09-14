@@ -2,15 +2,31 @@
 
 import { Menu } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { openCommandPalette } from "@/components/layout/command-palette";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { paths } from "@/routes/paths";
+import { cn } from "@/utils/cn";
+
+function navActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+const itemClass = (active: boolean) =>
+  cn(
+    "justify-start rounded-xl border px-3 py-2.5 text-sm font-semibold",
+    active
+      ? "border-cyan-400/70 bg-cyan-500/10 text-cyan-300"
+      : "border-transparent text-gray-300 hover:bg-white/5 hover:text-cyan-300",
+  );
 
 export function MobileNav() {
   const { user } = useAuth();
+  const pathname = usePathname() || "/";
+
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -22,25 +38,33 @@ export function MobileNav() {
         <SheetHeader>
           <SheetTitle>CINEWAVE</SheetTitle>
         </SheetHeader>
-        <div className="mt-6 flex flex-col gap-3">
+        <div className="mt-6 flex flex-col gap-2">
           <Button variant="ghost" className="justify-start" onClick={openCommandPalette}>
             Tìm phim
           </Button>
-          <Button asChild variant="ghost" className="justify-start">
-            <Link href={paths.movies}>Phim</Link>
-          </Button>
-          <Button asChild variant="ghost" className="justify-start">
-            <Link href={paths.tickets}>Vé của tôi</Link>
-          </Button>
+          <Link href={paths.movies} className={itemClass(navActive(pathname, paths.movies))}>
+            Phim
+          </Link>
+          <Link href={paths.tickets} className={itemClass(navActive(pathname, paths.tickets))}>
+            Vé của tôi
+          </Link>
           {user ? (
-            <Button asChild variant="ghost" className="justify-start">
-              <Link href={paths.notifications}>Thông báo</Link>
-            </Button>
+            <Link
+              href={paths.notifications}
+              className={itemClass(navActive(pathname, paths.notifications))}
+            >
+              Thông báo
+            </Link>
           ) : null}
           {user?.role === "ADMIN" ? (
-            <Button asChild variant="ghost" className="justify-start">
-              <Link href={paths.admin}>Admin</Link>
-            </Button>
+            <Link href={paths.admin} className={itemClass(navActive(pathname, paths.admin))}>
+              Admin
+            </Link>
+          ) : null}
+          {user?.role === "STAFF" || user?.role === "ADMIN" ? (
+            <Link href={paths.staff} className={itemClass(navActive(pathname, paths.staff))}>
+              Soát vé
+            </Link>
           ) : null}
         </div>
       </SheetContent>

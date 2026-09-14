@@ -15,11 +15,12 @@ export function Toaster({ ...props }: ToasterProps) {
       expand
       offset={80}
       gap={14}
-      duration={5200}
+      duration={3500}
       visibleToasts={5}
       className="toaster group"
       style={{ "--width": "26rem" } as CSSProperties}
       toastOptions={{
+        duration: 3500,
         classNames: {
           toast:
             "group toast group-[.toaster]:border-white/20 group-[.toaster]:bg-[#13172c] group-[.toaster]:text-white group-[.toaster]:shadow-2xl group-[.toaster]:shadow-cyan-500/25",

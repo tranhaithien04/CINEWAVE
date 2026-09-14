@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Clock, MapPin, Play, Star, Users } from "lucide-react";
+import { ArrowLeft, Clock, MapPin, Play, Star, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -78,7 +78,16 @@ export function MovieDetailPage({ slug }: { slug: string }) {
 
   if (!movie) {
     return (
-      <main className="mx-auto max-w-6xl px-4 py-12">
+      <main className="mx-auto max-w-6xl space-y-4 px-4 py-12">
+        <Link
+          href={paths.movies}
+          className="group inline-flex items-center gap-2 text-sm font-medium text-white/70 transition-colors hover:text-white"
+        >
+          <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] transition-[border-color,transform] duration-200 group-hover:-translate-x-0.5 group-hover:border-white/30">
+            <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.75} />
+          </span>
+          Danh sách phim
+        </Link>
         {loading ? (
           <p className="text-sm text-muted-foreground">Đang tải phim...</p>
         ) : (
@@ -94,10 +103,27 @@ export function MovieDetailPage({ slug }: { slug: string }) {
         <Image src={movie.backdropUrl} alt="" fill priority sizes="100vw" className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#06070d] via-[#0a0c16]/55 to-black/25" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#06070d]" />
+        <div className="absolute inset-x-0 top-0 z-10 mx-auto flex max-w-6xl px-4 pt-4 md:pt-6">
+          <Link
+            href={paths.movies}
+            className="group inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium text-white/75 transition-[color,background-color,transform] duration-200 hover:bg-black/35 hover:text-white"
+          >
+            <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-black/25 backdrop-blur-sm transition-[border-color,background-color,transform] duration-200 group-hover:-translate-x-0.5 group-hover:border-white/30 group-hover:bg-black/40">
+              <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.75} />
+            </span>
+            <span className="tracking-wide">
+              Danh sách phim
+              <span
+                aria-hidden
+                className="mt-0.5 block h-px origin-left scale-x-0 bg-white/50 transition-transform duration-200 group-hover:scale-x-100"
+              />
+            </span>
+          </Link>
+        </div>
       </section>
 
-      <div className="mx-auto grid max-w-6xl gap-6 px-4 md:-mt-36 md:grid-cols-[240px_1fr] lg:grid-cols-[280px_1fr]">
-        <Card className="overflow-hidden rounded-2xl border-white/10 shadow-2xl shadow-cyan-500/10">
+      <div className="mx-auto grid max-w-6xl items-start gap-6 px-4 md:-mt-36 md:grid-cols-[240px_1fr] lg:grid-cols-[280px_1fr]">
+        <Card className="self-start overflow-hidden rounded-2xl border-white/10 shadow-2xl shadow-cyan-500/10">
           <div className="relative aspect-[2/3]">
             <Image src={movie.posterUrl} alt={movie.title} fill sizes="280px" className="object-cover" />
             <AgeBadge rating={movie.rating} className="absolute left-3 top-3" />

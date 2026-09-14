@@ -43,6 +43,18 @@ const toneByType: Record<string, { icon: typeof Ticket; className: string }> = {
     icon: Wallet,
     className: "!border-amber-400/60 !bg-[#3a2a10] !text-amber-50",
   },
+  TICKET_CHECKED_IN: {
+    icon: CheckCircle2,
+    className: "!border-emerald-400/60 !bg-[#12352c] !text-emerald-50",
+  },
+  REFUND_READY: {
+    icon: Wallet,
+    className: "!border-amber-400/60 !bg-[#3a2a10] !text-amber-50",
+  },
+  ADMIN_BROADCAST: {
+    icon: Ticket,
+    className: "!border-cyan-400/70 !bg-[#102a38] !text-cyan-50",
+  },
 };
 
 const fallback = {
@@ -56,7 +68,7 @@ export function showAppNotificationToast(note: AppNotification) {
 
   toast(note.title, {
     description: note.body,
-    duration: 9000,
+    duration: 4500,
     position: "top-center",
     icon: <Icon className="h-5 w-5" strokeWidth={2.25} />,
     action: {

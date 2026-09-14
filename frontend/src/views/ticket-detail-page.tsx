@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, Download, Film, QrCode, Share2, Sparkles } from "lucide-react";
+import { ArrowLeft, CalendarClock, CheckCircle2, Download, Share2, Sparkles, Wallet } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
-import type { AdminBooking } from "@/api/admin";
-import { fetchMyTicket } from "@/api/tickets";
+import { cancelMyTicket, fetchMyTicket, type PublicTicket } from "@/api/tickets";
 import { AgeBadge } from "@/components/movies/age-badge";
+import { TicketQr } from "@/components/tickets/ticket-qr";
 import { EmptyState } from "@/components/shared/state-views";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,10 @@ import { paths } from "@/routes/paths";
 export function TicketDetailPage({ code }: { code: string }) {
   const { user, loading: authLoading } = useAuth();
   const { getMovieBySlug, getShowtimeById } = useCatalog();
-  const [ticket, setTicket] = useState<AdminBooking | null>(null);
+  const [ticket, setTicket] = useState<PublicTicket | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -34,6 +36,7 @@ export function TicketDetailPage({ code }: { code: string }) {
                 id: mock.code,
                 userEmail: null,
                 createdAt: new Date().toISOString(),
+                checkedInAt: mock.status === "USED" ? new Date().toISOString() : null,
                 ...mock,
               }
             : null,
@@ -131,8 +134,25 @@ export function TicketDetailPage({ code }: { code: string }) {
                 <Sparkles className="h-3.5 w-3.5" />
                 CINEWAVE IMAX PASS
               </div>
-              <Badge className="border-emerald-500/30 bg-emerald-500/15 text-emerald-300">
-                <CheckCircle2 className="mr-1 h-3 w-3" /> Đã xác nhận
+              <Badge
+                className={
+                  ticket.status === "USED"
+                    ? "border-white/20 bg-white/10 text-gray-300"
+                    : ticket.status === "CANCELLED"
+                      ? "border-amber-500/30 bg-amber-500/15 text-amber-200"
+                      : ticket.status === "REFUNDED"
+                        ? "border-white/20 bg-white/10 text-gray-300"
+                        : "border-emerald-500/30 bg-emerald-500/15 text-emerald-300"
+                }
+              >
+                <CheckCircle2 className="mr-1 h-3 w-3" />
+                {ticket.status === "USED"
+                  ? "Đã vào rạp"
+                  : ticket.status === "CANCELLED"
+                    ? "Chờ hoàn tiền"
+                    : ticket.status === "REFUNDED"
+                      ? "Đã hoàn tiền"
+                      : "Đã xác nhận"}
               </Badge>
             </div>
 
@@ -166,6 +186,11 @@ export function TicketDetailPage({ code }: { code: string }) {
                 <p className="font-display font-black text-emerald-400">{formatVnd(ticket.total)}</p>
               </div>
             </div>
+            {(ticket.concessions ?? []).length ? (
+              <p className="text-xs text-amber-200/80">
+                Combo: {ticket.concessions!.map((line) => `${line.name} × ${line.qty}`).join(", ")}
+              </p>
+            ) : null}
           </div>
 
           {/* Perforated Divider with Circular Tear Notches */}
@@ -186,16 +211,107 @@ export function TicketDetailPage({ code }: { code: string }) {
 
           {/* QR Check-in Section (Right) */}
           <div className="flex flex-col items-center justify-center p-6 md:p-8 md:min-w-[190px]">
-            <div className="relative rounded-2xl bg-white p-3.5 shadow-xl">
-              <QrCode className="h-32 w-32 text-zinc-950" aria-label={`QR vé ${ticket.code}`} />
-            </div>
-            <span className="mt-3 font-mono text-xs font-bold tracking-wider text-cyan-400">
-              SCAN TẠI CỔNG
-            </span>
-            <span className="text-[10px] text-gray-400">Mã QR hợp lệ cho {ticket.seats.length} khán giả</span>
+            {ticket.status === "CANCELLED" && ticket.refundQr ? (
+              <>
+                <TicketQr code={ticket.code} sig={ticket.refundQr.sig} size={148} mode="refund" />
+                <span className="mt-3 font-mono text-xs font-bold tracking-wider text-amber-300">
+                  QR HOÀN TIỀN
+                </span>
+                <span className="text-center text-[10px] text-gray-400">
+                  Mang ra quầy soát vé để nhận {formatVnd(ticket.total)}
+                  {ticket.refundExpiresAt
+                    ? ` · Hạn ${new Date(ticket.refundExpiresAt).toLocaleDateString("vi-VN")}`
+                    : ""}
+                </span>
+              </>
+            ) : (
+              <>
+                <TicketQr
+                  code={ticket.code}
+                  sig={ticket.qr?.sig}
+                  size={148}
+                  used={ticket.status === "USED"}
+                  stamp={ticket.status === "REFUNDED" ? "Đã hoàn" : undefined}
+                />
+                <span className="mt-3 font-mono text-xs font-bold tracking-wider text-cyan-400">
+                  SCAN TẠI CỔNG
+                </span>
+                <span className="text-[10px] text-gray-400">
+                  {ticket.status === "USED"
+                    ? "Vé đã được sử dụng"
+                    : ticket.status === "REFUNDED"
+                      ? "Đã nhận tiền mặt tại quầy"
+                      : `Mã QR hợp lệ cho ${ticket.seats.length} khán giả`}
+                </span>
+                {ticket.qr?.sig && ticket.status === "PAID" ? (
+                  <Button asChild variant="ghost" size="sm" className="mt-2 text-xs text-cyan-300">
+                    <Link href={paths.gate(ticket.code, ticket.qr.sig)}>Mở trang soát vé</Link>
+                  </Button>
+                ) : null}
+              </>
+            )}
           </div>
         </div>
       </div>
+
+      {user && ticket.status === "PAID" && (ticket.canCancel || ticket.canReschedule) ? (
+        <div className="mt-6 space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p className="text-xs text-muted-foreground">
+            Hủy hoặc đổi suất trước giờ chiếu ít nhất 60 phút. Hủy vé sẽ nhả ghế ngay và cấp QR hoàn tiền mặt tại quầy.
+          </p>
+          {confirmCancel ? (
+            <div className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">
+              <p>Hủy vé {ticket.code}? QR vào rạp sẽ hết hiệu lực. Mang QR hoàn tiền ra quầy trong 7 ngày.</p>
+              <div className="flex gap-2">
+                <Button
+                  className="rounded-xl bg-amber-500 text-black hover:bg-amber-400"
+                  disabled={cancelling}
+                  onClick={() => {
+                    setCancelling(true);
+                    void cancelMyTicket(ticket.code)
+                      .then((data) => {
+                        setTicket(data.ticket);
+                        setConfirmCancel(false);
+                        toast.success("Đã hủy vé. Dùng QR hoàn tiền tại quầy.");
+                      })
+                      .catch((error) => {
+                        toast.error(error instanceof Error ? error.message : "Không hủy được vé");
+                      })
+                      .finally(() => setCancelling(false));
+                  }}
+                >
+                  <Wallet className="mr-1.5 h-4 w-4" />
+                  {cancelling ? "Đang hủy…" : "Xác nhận hủy"}
+                </Button>
+                <Button variant="outline" className="rounded-xl" onClick={() => setConfirmCancel(false)}>
+                  Giữ vé
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {ticket.canReschedule ? (
+                <Button asChild variant="outline" className="rounded-xl">
+                  <Link href={paths.changeShowtime(ticket.code)}>
+                    <CalendarClock className="mr-1.5 h-4 w-4" />
+                    Đổi suất cùng giá
+                  </Link>
+                </Button>
+              ) : null}
+              {ticket.canCancel ? (
+                <Button
+                  variant="outline"
+                  className="rounded-xl border-amber-500/40 text-amber-200"
+                  onClick={() => setConfirmCancel(true)}
+                >
+                  <Wallet className="mr-1.5 h-4 w-4" />
+                  Hủy vé, nhận QR hoàn tiền
+                </Button>
+              ) : null}
+            </div>
+          )}
+        </div>
+      ) : null}
     </main>
   );
 }

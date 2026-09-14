@@ -62,17 +62,29 @@ export function HomePage() {
 
         <section className="mx-auto grid max-w-6xl gap-4 px-4 md:grid-cols-3">
           {[
-            { icon: Clapperboard, title: "Chọn phim & suất", text: "Lọc theo độ tuổi P đến T18." },
-            { icon: ScanLine, title: "Giữ ghế realtime", text: "Ghế trống, đang giữ, đã đặt tách màu rõ." },
-            { icon: ShieldCheck, title: "Age gate CCCD", text: "Chỉ xác minh khi phim hạn chế tuổi." },
+            {
+              icon: Clapperboard,
+              title: "Lịch chiếu chuẩn rạp",
+              text: "Suất, phòng và nhãn tuổi P–T18 đồng bộ realtime.",
+            },
+            {
+              icon: ScanLine,
+              title: "Sơ đồ ghế 3D live",
+              text: "Giữ ghế 4,5 phút — trống / đang giữ / đã bán tách rõ.",
+            },
+            {
+              icon: ShieldCheck,
+              title: "Age gate CCCD",
+              text: "Chỉ xác minh khi suất hạn chế tuổi, không lưu ảnh.",
+            },
           ].map((item) => (
             <div
               key={item.title}
-              className="rounded-2xl border border-white/10 bg-cinema-900/70 p-6 shadow-xl backdrop-blur-md"
+              className="rounded-2xl border border-cyan-400/30 bg-gradient-to-b from-cyan-500/15 to-cinema-900/90 p-6 shadow-xl shadow-cyan-950/40 backdrop-blur-md"
             >
-              <item.icon className="mb-4 h-5 w-5 text-cyan-400" strokeWidth={1.75} />
-              <h2 className="font-display font-bold text-white">{item.title}</h2>
-              <p className="mt-2 text-sm text-gray-400">{item.text}</p>
+              <item.icon className="mb-4 h-6 w-6 text-cyan-300" strokeWidth={2} />
+              <h2 className="font-display text-lg font-black text-white">{item.title}</h2>
+              <p className="mt-2 text-sm font-medium leading-relaxed text-gray-200">{item.text}</p>
             </div>
           ))}
         </section>
@@ -163,47 +175,62 @@ export function HomePage() {
               className="mx-auto w-full max-w-5xl"
             >
               <div className="mb-10 text-center">
-                <Badge className="border-cyan-500/30 bg-cyan-950/60 text-cyan-300">
-                  Trải Nghiệm Đột Phá
+                <Badge className="border-cyan-400/40 bg-cyan-950/80 text-cyan-200">
+                  Quy trình đặt vé
                 </Badge>
-                <h2 className="mt-3 font-display text-3xl font-black text-white sm:text-5xl">
-                  CÔNG NGHỆ RẠP CHIẾU THẾ HỆ MỚI
+                <h2 className="mt-3 font-display text-3xl font-black tracking-tight text-white sm:text-5xl">
+                  Từ chọn suất đến vào ghế
                 </h2>
-                <p className="mx-auto mt-3 max-w-lg text-sm text-gray-300 md:text-base">
-                  Quy trình mua vé và trải nghiệm điện ảnh khép kín tối ưu hóa bằng trí tuệ nhân tạo.
+                <p className="mx-auto mt-3 max-w-xl text-sm font-medium text-gray-200 md:text-base">
+                  Ba bước gọn: chọn suất chuẩn rạp, giữ ghế live, xác minh tuổi khi cần — rồi nhận vé QR.
                 </p>
               </div>
 
-              <div className="grid gap-6 md:grid-cols-3">
+              <div className="grid gap-5 md:grid-cols-3">
                 {[
                   {
                     icon: Clapperboard,
-                    title: "Chọn phim & suất chiếu",
-                    text: "Bộ lọc thông minh theo phân loại độ tuổi P, T13, T16, T18 cập nhật theo thời gian thực.",
-                    accent: "from-cyan-500/20 to-blue-500/5",
+                    title: "Lịch chiếu chuẩn rạp",
+                    text: "Suất chiếu, phòng và nhãn tuổi P–T18 cập nhật realtime. Chọn đúng phim, đúng khung giờ, đúng độ tuổi.",
+                    accent: "from-cyan-500/40 via-sky-600/25 to-[#0b1224]/95",
+                    ring: "border-cyan-400/45 hover:border-cyan-300/70",
+                    glow: "shadow-cyan-500/25",
+                    iconTone: "border-cyan-400/40 bg-cyan-500/20 text-cyan-200",
                   },
                   {
                     icon: ScanLine,
-                    title: "Giữ ghế 3D Realtime",
-                    text: "Sơ đồ phòng chiếu 3D chân thực, hiển thị trực quan ghế trống, đang giữ và đã đặt.",
-                    accent: "from-blue-500/20 to-indigo-500/5",
+                    title: "Sơ đồ ghế 3D live",
+                    text: "Phòng chiếu 3D hiển thị ghế trống, đang giữ và đã bán. Giữ chỗ 4,5 phút để thanh toán không mất ghế.",
+                    accent: "from-sky-500/35 via-blue-700/30 to-[#0a1020]/95",
+                    ring: "border-sky-400/45 hover:border-sky-300/70",
+                    glow: "shadow-sky-500/25",
+                    iconTone: "border-sky-400/40 bg-sky-500/20 text-sky-200",
                   },
                   {
                     icon: ShieldCheck,
-                    title: "Xác thực CCCD bằng AI",
-                    text: "YOLO + OCR nhận diện độ tuổi nhanh chóng từ căn cước công dân, bảo mật thông tin tối đa.",
-                    accent: "from-purple-500/20 to-pink-500/5",
+                    title: "Age gate bằng CCCD",
+                    text: "Chỉ xác minh khi suất hạn chế tuổi. AI đọc giấy tờ tạm thời — không lưu ảnh sau khi kiểm tra xong.",
+                    accent: "from-emerald-500/30 via-teal-700/25 to-[#0a1412]/95",
+                    ring: "border-emerald-400/40 hover:border-emerald-300/65",
+                    glow: "shadow-emerald-500/20",
+                    iconTone: "border-emerald-400/40 bg-emerald-500/20 text-emerald-200",
                   },
                 ].map((item) => (
                   <div
                     key={item.title}
-                    className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b ${item.accent} p-8 shadow-2xl backdrop-blur-xl transition-[transform,border-color] duration-300 hover:-translate-y-1 hover:border-cyan-400/50`}
+                    className={`group relative overflow-hidden rounded-2xl border bg-gradient-to-br ${item.accent} ${item.ring} p-8 shadow-2xl ${item.glow} backdrop-blur-xl transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_50px_-12px_rgba(34,211,238,0.35)]`}
                   >
-                    <div className="mb-5 inline-flex rounded-xl border border-white/10 bg-white/5 p-3.5 text-cyan-400">
-                      <item.icon className="h-6 w-6" strokeWidth={1.8} />
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-70"
+                    />
+                    <div className={`mb-5 inline-flex rounded-xl border p-3.5 ${item.iconTone}`}>
+                      <item.icon className="h-7 w-7" strokeWidth={2.1} />
                     </div>
-                    <h3 className="font-display text-xl font-bold text-white">{item.title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-gray-300">{item.text}</p>
+                    <h3 className="font-display text-xl font-black tracking-tight text-white sm:text-2xl">
+                      {item.title}
+                    </h3>
+                    <p className="mt-3 text-sm font-medium leading-relaxed text-gray-100/95">{item.text}</p>
                   </div>
                 ))}
               </div>

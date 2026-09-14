@@ -9,6 +9,7 @@ import { Eye, EyeOff, Film, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { ApiError } from "@/api/client";
+import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,9 +34,20 @@ export function RegisterPage() {
   async function onSubmit(values: RegisterValues) {
     setError(null);
     try {
-      await createAccount({ fullName: values.fullName, email: values.email, password: values.password });
-      toast.success("Tạo tài khoản thành công! Đã tự động đăng nhập.");
-      router.push(paths.home);
+      const result = await createAccount({
+        fullName: values.fullName,
+        email: values.email,
+        password: values.password,
+      });
+      if ("pendingVerification" in result && result.pendingVerification) {
+        toast.success(result.message || "Đã gửi email xác minh");
+        router.push(`${paths.verifyEmail}?email=${encodeURIComponent(result.email)}`);
+        return;
+      }
+      if ("user" in result) {
+        toast.success("Tạo tài khoản thành công!");
+        router.push(paths.home);
+      }
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Không đăng ký được";
       setError(message);
@@ -63,7 +75,7 @@ export function RegisterPage() {
             Tạo tài khoản
           </CardTitle>
           <CardDescription className="text-gray-400">
-            Trở thành hội viên CineWave để nhận ưu đãi vé IMAX và tích điểm thành viên.
+            Đăng ký bằng email cần xác minh hộp thư trước khi đăng nhập. Google được xác minh sẵn.
           </CardDescription>
         </CardHeader>
 
@@ -137,6 +149,12 @@ export function RegisterPage() {
             >
               {isSubmitting ? "Đang xử lý..." : "Đăng ký thành viên →"}
             </Button>
+            <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-gray-500">
+              <span className="h-px flex-1 bg-white/10" />
+              hoặc
+              <span className="h-px flex-1 bg-white/10" />
+            </div>
+            <GoogleAuthButton label="Đăng ký với Google" />
             <p className="text-center text-sm text-gray-400">
               Đã có tài khoản?{" "}
               <Button asChild variant="link" className="h-auto p-0 font-semibold text-cyan-400 hover:text-cyan-300">

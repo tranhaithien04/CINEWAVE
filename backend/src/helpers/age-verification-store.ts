@@ -53,3 +53,8 @@ export async function listAgeVerificationsByUser(userId: string) {
     .filter((item) => item.userId === userId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
+
+export async function listAgeVerifications() {
+  const items = await readAll();
+  return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}

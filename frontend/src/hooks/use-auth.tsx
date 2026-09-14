@@ -9,6 +9,7 @@ import {
   refreshSession,
   registerAccount,
   type AuthUser,
+  type RegisterResponse,
 } from "@/api/auth";
 import { ApiError } from "@/api/client";
 
@@ -16,8 +17,13 @@ type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   login: (input: { email: string; password: string }) => Promise<AuthUser>;
-  register: (input: { email: string; password: string; fullName: string }) => Promise<AuthUser>;
+  register: (input: {
+    email: string;
+    password: string;
+    fullName: string;
+  }) => Promise<RegisterResponse>;
   logout: () => Promise<void>;
+  setUser: (user: AuthUser | null) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -59,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       loading,
+      setUser,
       async login(input) {
         const data = await loginAccount(input);
         setUser(data.user);
@@ -66,8 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async register(input) {
         const data = await registerAccount(input);
-        setUser(data.user);
-        return data.user;
+        if ("user" in data) setUser(data.user);
+        return data;
       },
       async logout() {
         await logoutAccount();

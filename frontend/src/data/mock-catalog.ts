@@ -119,24 +119,19 @@ export function getShowtimeById(id: string) {
   return showtimes.find((item) => item.id === id) ?? showtimes[0] ?? null;
 }
 
-export function buildSeatMap(): Seat[] {
+export function buildSeatMap(
+  occupancy: Record<string, Seat["state"]> = {},
+  blockedSeats: string[] = [],
+): Seat[] {
   const rows = ["A", "B", "C", "D", "E", "F"];
-  const sold = new Set(["A3", "B7", "C2", "D8", "F4"]);
-  const blocked = new Set(["E5"]);
-  const held = new Set(["C5"]);
+  const blocked = new Set(blockedSeats.map((seat) => seat.trim().toUpperCase()).filter(Boolean));
 
   return rows.flatMap((row) =>
     Array.from({ length: 10 }, (_, index) => {
       const number = index + 1;
       const label = `${row}${number}`;
       const type = row === "F" ? "VIP" : row === "A" && (number === 5 || number === 6) ? "COUPLE" : "STANDARD";
-      const state = sold.has(label)
-        ? "SOLD"
-        : blocked.has(label)
-          ? "BLOCKED"
-          : held.has(label)
-            ? "HELD"
-            : "AVAILABLE";
+      const state = blocked.has(label) ? "BLOCKED" : (occupancy[label] ?? "AVAILABLE");
       return { id: `seat-${label}`, row, number, type, state } satisfies Seat;
     }),
   );

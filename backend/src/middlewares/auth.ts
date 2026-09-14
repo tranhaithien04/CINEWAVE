@@ -4,6 +4,22 @@ import { ACCESS_COOKIE } from "../helpers/cookies.js";
 import { verifyAccessToken } from "../helpers/jwt.js";
 import { DomainError } from "../models/errors.js";
 
+export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
+  const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
+  if (!token) {
+    next();
+    return;
+  }
+  try {
+    const payload = verifyAccessToken(token);
+    req.userId = payload.sub;
+    req.userRole = payload.role;
+  } catch {
+    /* anonymous is fine */
+  }
+  next();
+}
+
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
   if (!token) {

@@ -140,12 +140,26 @@ export function AdminBookingsPage() {
                           </span>
                         ))}
                       </div>
+                      {(booking.concessionTotal ?? 0) > 0 ? (
+                        <>
+                          <span>•</span>
+                          <span className="text-amber-200/90">
+                            F&B {formatVnd(booking.concessionTotal ?? 0)}
+                            {booking.concessions?.length
+                              ? ` (${booking.concessions.map((c) => `${c.name}×${c.qty}`).join(", ")})`
+                              : ""}
+                          </span>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-display font-semibold text-white">
-                      {formatVnd(booking.total)}
-                    </span>
+                    <div className="text-right">
+                      <span className="font-display font-semibold text-white">{formatVnd(booking.total)}</span>
+                      {(booking.seatTotal ?? 0) > 0 ? (
+                        <p className="text-[10px] text-muted-foreground">Ghế {formatVnd(booking.seatTotal ?? 0)}</p>
+                      ) : null}
+                    </div>
                     <Badge variant="outline" className={`rounded-full text-xs font-semibold ${statusColor}`}>
                       {booking.status}
                     </Badge>

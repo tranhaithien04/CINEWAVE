@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Box, LayoutGrid } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Box, LayoutGrid } from "lucide-react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import type { Showtime } from "@/@types/movie";
 import type { Seat } from "@/@types/seat";
 import { BookingSummary } from "@/components/booking/booking-summary";
 import { HoldTimer } from "@/components/booking/hold-timer";
@@ -14,6 +16,8 @@ import { EmptyState } from "@/components/shared/state-views";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { holdSeats } from "@/api/bookings";
+import { fetchShowtime, fetchShowtimeSeats } from "@/api/catalog";
+import { rescheduleMyTicket } from "@/api/tickets";
 import { buildSeatMap, seatPrice } from "@/data/mock-catalog";
 import { useAuth } from "@/hooks/use-auth";
 import { useCatalog } from "@/hooks/use-catalog";
@@ -39,17 +43,62 @@ const legend = [
   { label: "Ghế đôi Sweetbox", className: "bg-rose-500 border border-rose-400 text-white font-bold" },
 ];
 
-export function SeatMapPage({ showtimeId }: { showtimeId: string }) {
+export function SeatMapPage({ showtimeId, changeTicket }: { showtimeId: string; changeTicket?: string }) {
   const router = useRouter();
   const { user } = useAuth();
   const { getMovieBySlug, getShowtimeById } = useCatalog();
-  const showtime = getShowtimeById(showtimeId);
+  const catalogShow = getShowtimeById(showtimeId);
+  const [showtime, setShowtime] = useState<Showtime | null>(catalogShow);
+  const [loadingShow, setLoadingShow] = useState(!catalogShow);
   const movie = showtime ? getMovieBySlug(showtime.movieSlug) : null;
-  const seats = useMemo(() => buildSeatMap(), []);
+  const [seats, setSeats] = useState<Seat[]>(() => buildSeatMap());
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [view, setView] = useState<"3d" | "2d">("3d");
   const [holding, setHolding] = useState(false);
-  const [holdUntil] = useState(() => new Date(Date.now() + 8 * 60 * 1000));
+  const [holdUntil] = useState(() => new Date(Date.now() + 4.5 * 60 * 1000));
+  const changing = Boolean(changeTicket);
+
+  useEffect(() => {
+    if (catalogShow) {
+      setShowtime(catalogShow);
+      setLoadingShow(false);
+      return;
+    }
+    let cancelled = false;
+    setLoadingShow(true);
+    void fetchShowtime(showtimeId)
+      .then((data) => {
+        if (!cancelled) setShowtime(data.showtime);
+      })
+      .catch(() => {
+        if (!cancelled) setShowtime(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingShow(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [catalogShow, showtimeId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      void fetchShowtimeSeats(showtimeId)
+        .then((data) => {
+          if (!cancelled && data.seats?.length) setSeats(data.seats);
+        })
+        .catch(() => {
+          /* keep layout fallback */
+        });
+    };
+    load();
+    const timer = window.setInterval(load, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [showtimeId]);
 
   const selectedSeats = useMemo(() => {
     const selected = new Set(selectedIds);
@@ -84,6 +133,12 @@ export function SeatMapPage({ showtimeId }: { showtimeId: string }) {
     });
   }
 
+  if (loadingShow) {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-12 text-sm text-muted-foreground">Đang tải sơ đồ ghế…</main>
+    );
+  }
+
   if (!showtime || !movie || showtime.closed) {
     return (
       <main className="mx-auto max-w-6xl px-4 py-12">
@@ -92,19 +147,32 @@ export function SeatMapPage({ showtimeId }: { showtimeId: string }) {
     );
   }
 
+  const backHref = changing && changeTicket ? paths.changeShowtime(changeTicket) : paths.movie(movie.slug);
+
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 pb-32 md:pb-12">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="space-y-2">
+          <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit px-2 text-gray-400 hover:text-white">
+            <Link href={backHref}>
+              <ArrowLeft className="h-4 w-4" />
+              {changing ? "Quay lại chọn suất" : "Quay lại phim"}
+            </Link>
+          </Button>
           <p className="text-sm text-cyan-400">{movie.title}</p>
-          <h1 className="font-display text-3xl font-bold tracking-tight text-white">Chọn ghế</h1>
+          <h1 className="font-display text-3xl font-bold tracking-tight text-white">
+            {changing ? "Chọn ghế suất mới" : "Chọn ghế"}
+          </h1>
           <p className="text-sm text-muted-foreground">
             {showtime.cinema} · {showtime.room}
+            {changing ? " · Đổi suất cùng giá, tổng ghế phải bằng vé cũ." : null}
           </p>
-          <HoldTimer
-            expiresAt={holdUntil}
-            onExpire={() => toast.error("Hết thời gian giữ ghế. Chọn lại giúp bạn.")}
-          />
+          {changing ? null : (
+            <HoldTimer
+              expiresAt={holdUntil}
+              onExpire={() => toast.error("Hết thời gian giữ ghế. Chọn lại giúp bạn.")}
+            />
+          )}
         </div>
         <div className="flex rounded-xl border border-white/10 bg-cinema-900/70 p-1 backdrop-blur-md">
           <Button
@@ -149,23 +217,38 @@ export function SeatMapPage({ showtimeId }: { showtimeId: string }) {
         seats={selectedSeats}
         priceBase={showtime.priceBase}
         pending={holding}
+        continueLabel={changing ? "Xác nhận đổi suất" : "Tiếp tục"}
+        pendingLabel={changing ? "Đang đổi suất…" : "Đang giữ ghế…"}
         onContinue={() => {
           if (!user) {
             toast.error("Đăng nhập để giữ ghế.");
-            router.push(paths.loginNext(paths.seats(showtimeId)));
+            router.push(paths.loginNext(paths.seats(showtimeId, changeTicket)));
             return;
           }
           if (holding) return;
           setHolding(true);
+          const labels = selectedSeats.map((seat) => `${seat.row}${seat.number}`);
+          if (changing && changeTicket) {
+            void rescheduleMyTicket(changeTicket, { showtimeId: showtime.id, seats: labels })
+              .then((data) => {
+                toast.success(`Đã đổi suất. Ghế ${data.ticket.seats.join(", ")}.`);
+                router.push(paths.ticket(data.ticket.code));
+              })
+              .catch((error) => {
+                toast.error(error instanceof Error ? error.message : "Không đổi được suất");
+              })
+              .finally(() => setHolding(false));
+            return;
+          }
           const total = selectedSeats.reduce((sum, seat) => sum + seatPrice(showtime.priceBase, seat.type), 0);
           void holdSeats({
             showtimeId: showtime.id,
             movieSlug: movie.slug,
-            seats: selectedSeats.map((seat) => `${seat.row}${seat.number}`),
+            seats: labels,
             total,
           })
             .then((data) => {
-              toast.success("Đã giữ ghế 8 phút.");
+              toast.success("Đã giữ ghế 4,5 phút.");
               router.push(paths.checkout(data.booking.id));
             })
             .catch((error) => {
@@ -179,4 +262,3 @@ export function SeatMapPage({ showtimeId }: { showtimeId: string }) {
 }
 
 export default SeatMapPage;
-

@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { QrCode, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
-import type { AdminBooking } from "@/api/admin";
 import { ApiError } from "@/api/client";
-import { fetchMyTickets } from "@/api/tickets";
+import { fetchMyTickets, type PublicTicket } from "@/api/tickets";
 import { AgeBadge } from "@/components/movies/age-badge";
+import { TicketQr } from "@/components/tickets/ticket-qr";
 import { EmptyState } from "@/components/shared/state-views";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   PAID: { label: "Đã thanh toán", className: "border-emerald-400/40 bg-emerald-500/15 text-emerald-300" },
   USED: { label: "Đã vào rạp", className: "border-white/15 bg-white/5 text-gray-400" },
   EXPIRED: { label: "Hết hạn", className: "border-rose-500/30 bg-rose-500/10 text-rose-300" },
-  CANCELLED: { label: "Đã hủy", className: "border-rose-500/30 bg-rose-500/10 text-rose-300" },
+  CANCELLED: { label: "Chờ hoàn tiền", className: "border-amber-500/30 bg-amber-500/10 text-amber-200" },
   REFUNDED: { label: "Đã hoàn tiền", className: "border-amber-500/30 bg-amber-500/10 text-amber-300" },
   VOIDED: { label: "Vô hiệu", className: "border-rose-500/30 bg-rose-500/10 text-rose-300" },
 };
@@ -29,7 +29,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 export function TicketsPage() {
   const { user, loading: authLoading } = useAuth();
   const { getMovieBySlug, getShowtimeById } = useCatalog();
-  const [tickets, setTickets] = useState<AdminBooking[]>([]);
+  const [tickets, setTickets] = useState<PublicTicket[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -169,9 +169,17 @@ export function TicketsPage() {
               </div>
 
               {/* QR Preview Card */}
-              <div className="relative z-10 flex flex-col items-center justify-center rounded-2xl bg-white p-3.5 shadow-md">
-                <QrCode className="h-20 w-20 text-zinc-950" />
-                <span className="mt-1 font-mono text-[9px] font-bold text-gray-800">{ticket.code}</span>
+              <div className="relative z-10">
+                <TicketQr
+                  code={ticket.code}
+                  sig={ticket.status === "CANCELLED" ? ticket.refundQr?.sig : ticket.qr?.sig}
+                  size={88}
+                  used={ticket.status === "USED"}
+                  mode={ticket.status === "CANCELLED" ? "refund" : "ticket"}
+                  stamp={ticket.status === "REFUNDED" ? "Đã hoàn" : undefined}
+                  className="shadow-md"
+                />
+                <span className="mt-1 block text-center font-mono text-[9px] font-bold text-gray-200">{ticket.code}</span>
               </div>
             </Link>
           );

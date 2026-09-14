@@ -78,11 +78,21 @@ const config: Config = {
           "0%, 100%": { opacity: "0.35" },
           "50%": { opacity: "0.7" },
         },
+        atmosphereDrift: {
+          "0%, 100%": { transform: "translate3d(0, 0, 0) scale(1)" },
+          "50%": { transform: "translate3d(2%, -3%, 0) scale(1.06)" },
+        },
+        atmosphereBeam: {
+          "0%, 100%": { opacity: "0.25", transform: "translateX(-4%) rotate(18deg)" },
+          "50%": { opacity: "0.55", transform: "translateX(4%) rotate(18deg)" },
+        },
       },
       animation: {
         scan: "scan 1.6s ease-in-out infinite alternate",
         shimmer: "shimmer 2.8s linear infinite",
         "pulse-glow": "pulseGlow 4s ease-in-out infinite",
+        "atmosphere-drift": "atmosphereDrift 18s ease-in-out infinite",
+        "atmosphere-beam": "atmosphereBeam 12s ease-in-out infinite",
       },
     },
   },

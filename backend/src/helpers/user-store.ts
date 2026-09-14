@@ -12,6 +12,16 @@ export async function findUserById(id: string) {
   return toPlain<UserRecord>(doc);
 }
 
+export async function findUserByGoogleId(googleId: string) {
+  const doc = await UserModel.findOne({ googleId }).lean();
+  return toPlain<UserRecord>(doc);
+}
+
+export async function findUserByEmailVerifyTokenHash(tokenHash: string) {
+  const doc = await UserModel.findOne({ emailVerifyTokenHash: tokenHash }).lean();
+  return toPlain<UserRecord>(doc);
+}
+
 export async function createUser(user: UserRecord) {
   const created = await UserModel.create({
     ...user,

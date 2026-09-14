@@ -30,6 +30,8 @@ export type ShowtimeRecord = {
   startsAt: string;
   priceBase: number;
   closed: boolean;
+  /** Ghế không mở bán (lối đi, hỏng…) — lưu trên suất trong Mongo */
+  blockedSeats?: string[];
 };
 
 export type BookingStatus =
@@ -42,6 +44,13 @@ export type BookingStatus =
   | "EXPIRED"
   | "VOIDED";
 
+export type ConcessionLine = {
+  id: string;
+  qty: number;
+  name: string;
+  unitPrice: number;
+};
+
 export type BookingRecord = {
   id: string;
   code: string;
@@ -50,7 +59,19 @@ export type BookingRecord = {
   seats: string[];
   status: BookingStatus;
   total: number;
+  seatTotal?: number;
+  concessionTotal?: number;
+  concessions?: ConcessionLine[];
   userEmail: string | null;
   createdAt: string;
   holdExpiresAt?: string | null;
+  paymentProvider?: "SEPAY" | "MOCK" | null;
+  paymentCode?: string | null;
+  paymentExpiresAt?: string | null;
+  sepayTransactionId?: string | null;
+  paidAt?: string | null;
+  checkedInAt?: string | null;
+  cancelledAt?: string | null;
+  refundExpiresAt?: string | null;
+  refundedAt?: string | null;
 };

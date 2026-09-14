@@ -1,17 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { checkInAdminTicket, fetchAdminTickets, type AdminBooking } from "@/api/admin";
 import { ApiError } from "@/api/client";
+import { TicketScanner } from "@/components/tickets/ticket-scanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatVnd } from "@/data/mock-catalog";
 import { useCatalog } from "@/hooks/use-catalog";
+import { paths } from "@/routes/paths";
 
 export function AdminTicketsPage() {
+  const router = useRouter();
   const { getMovieBySlug } = useCatalog();
   const [tickets, setTickets] = useState<AdminBooking[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +47,14 @@ export function AdminTicketsPage() {
 
   const [search, setSearch] = useState("");
 
+  const onScanQr = useCallback(
+    (payload: { code: string; sig?: string }) => {
+      toast.message(`Đã đọc ${payload.code}`);
+      router.push(paths.gate(payload.code, payload.sig));
+    },
+    [router],
+  );
+
   const filteredTickets = tickets.filter(
     (t) =>
       t.code.toLowerCase().includes(search.toLowerCase()) ||
@@ -59,9 +72,20 @@ export function AdminTicketsPage() {
               {tickets.length} Vé
             </Badge>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">Kiểm tra mã vé QR, quét vào phòng chiếu (một lần duy nhất).</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Quét QR trên điện thoại khách hoặc mở <Link href={paths.staff} className="text-cyan-300 hover:underline">cổng soát vé Staff</Link>.
+          </p>
         </div>
       </div>
+
+      <Card className="rounded-2xl border-cyan-500/20 bg-cyan-500/5 backdrop-blur-xl">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-white">Quét QR tại cổng</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TicketScanner onScan={onScanQr} />
+        </CardContent>
+      </Card>
 
       <Card className="rounded-2xl border-white/10 bg-white/[0.02] backdrop-blur-xl">
         <CardHeader className="border-b border-white/5 pb-4">

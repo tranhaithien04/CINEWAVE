@@ -1,13 +1,16 @@
 import { getMovieBySlug, getShowtimeById } from "./catalog-store.js";
 import { listBookings } from "./booking-store.js";
 import { notifyUser } from "../services/notification.service.js";
+import { expireStalePayments } from "../services/payment.service.js";
 import { purgeCccdTmp } from "../services/age-verification.service.js";
 
 const HOLD_WARN_MS = 2 * 60 * 1000;
 const SHOWTIME_REMIND_MS = 60 * 60 * 1000;
 
 export async function expireHolds() {}
-export async function expirePayments() {}
+export async function expirePayments() {
+  await expireStalePayments();
+}
 export async function reconcilePayments() {}
 export { purgeCccdTmp };
 

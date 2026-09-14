@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { Showtime } from "@/@types/movie";
 import { closeAdminShowtime, createAdminShowtime, deleteAdminShowtime, updateAdminShowtime } from "@/api/admin";
 import { ApiError } from "@/api/client";
+import { SeatBlockEditor } from "@/components/admin/seat-block-editor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +33,7 @@ const emptyForm = {
   startsAt: toLocal(new Date().toISOString()),
   priceBase: 100000,
   closed: false,
+  blockedSeats: [] as string[],
 };
 
 export function AdminShowtimesPage() {
@@ -43,7 +45,7 @@ export function AdminShowtimesPage() {
 
   function startCreate() {
     setEditing(null);
-    setForm({ ...emptyForm, movieSlug: movies[0]?.slug ?? "" });
+    setForm({ ...emptyForm, movieSlug: movies[0]?.slug ?? "", blockedSeats: [] });
     setOpen(true);
   }
 
@@ -56,6 +58,7 @@ export function AdminShowtimesPage() {
       startsAt: toLocal(show.startsAt),
       priceBase: show.priceBase,
       closed: Boolean(show.closed),
+      blockedSeats: [...(show.blockedSeats ?? [])],
     });
     setOpen(true);
   }
@@ -69,6 +72,7 @@ export function AdminShowtimesPage() {
       startsAt: fromLocal(form.startsAt),
       priceBase: Number(form.priceBase),
       closed: form.closed,
+      blockedSeats: form.blockedSeats,
     };
     try {
       if (editing) {
@@ -163,13 +167,14 @@ export function AdminShowtimesPage() {
             filteredShowtimes.map((show) => {
               const movie = movies.find((item) => item.slug === show.movieSlug);
               const date = new Date(show.startsAt);
+              const blockedCount = show.blockedSeats?.length ?? 0;
               return (
                 <div
                   key={show.id}
                   className="group flex flex-wrap items-center justify-between gap-4 py-3.5 transition-colors hover:bg-white/[0.02]"
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-white group-hover:text-cyan-300 transition-colors">
+                    <p className="truncate font-medium text-white transition-colors group-hover:text-cyan-300">
                       {movie?.title ?? show.movieSlug}
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -177,12 +182,18 @@ export function AdminShowtimesPage() {
                         {show.cinema} · {show.room}
                       </span>
                       <span>•</span>
-                      <span className="text-cyan-300 font-mono">
+                      <span className="font-mono text-cyan-300">
                         {date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
                       </span>
                       <span>
                         {date.toLocaleDateString("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit" })}
                       </span>
+                      {blockedCount > 0 ? (
+                        <>
+                          <span>•</span>
+                          <span className="text-rose-300">{blockedCount} ghế khóa</span>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -234,7 +245,7 @@ export function AdminShowtimesPage() {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="rounded-2xl border-white/10 bg-zinc-950/95 backdrop-blur-2xl sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl border-white/10 bg-zinc-950/95 backdrop-blur-2xl sm:max-w-xl">
           <DialogHeader className="border-b border-white/5 pb-3">
             <DialogTitle className="font-display text-xl font-bold text-white">
               {editing ? "Chỉnh sửa suất chiếu" : "Thêm suất chiếu mới"}
@@ -284,7 +295,9 @@ export function AdminShowtimesPage() {
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Giá vé cơ bản (VND)</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Giá vé cơ bản (VND)
+                </Label>
                 <Input
                   type="number"
                   value={form.priceBase}
@@ -301,9 +314,18 @@ export function AdminShowtimesPage() {
                 onChange={(event) => setForm({ ...form, closed: event.target.checked })}
                 className="h-4 w-4 rounded border-white/20 bg-zinc-900 text-rose-500 focus:ring-rose-500"
               />
-              <label htmlFor="closedCheck" className="text-sm font-medium text-white cursor-pointer select-none">
+              <label htmlFor="closedCheck" className="cursor-pointer select-none text-sm font-medium text-white">
                 Đóng bán suất này (khách không thể đặt thêm)
               </label>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+              <Label className="mb-3 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Ghế khóa (suất này)
+              </Label>
+              <SeatBlockEditor
+                value={form.blockedSeats}
+                onChange={(blockedSeats) => setForm({ ...form, blockedSeats })}
+              />
             </div>
             <Button
               disabled={saving}

@@ -7,6 +7,14 @@ export const envKeys = [
   "AI_SERVICE_KEY",
   "HOLD_TTL_SECONDS",
   "PAYMENT_PROVIDER",
+  "SEPAY_ACCOUNT_NUMBER",
+  "SEPAY_BANK",
+  "SEPAY_ACCOUNT_NAME",
+  "SEPAY_WEBHOOK_API_KEY",
+  "SEPAY_WEBHOOK_SECRET",
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET",
+  "GOOGLE_CALLBACK_URL",
 ] as const;
 
 export type EnvKey = (typeof envKeys)[number];

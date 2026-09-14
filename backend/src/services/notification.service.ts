@@ -23,6 +23,7 @@ export type NotifyInput = {
   bookingId?: string | null;
   movieSlug?: string | null;
   dedupe?: boolean;
+  sendEmail?: boolean;
 };
 
 export function toPublicNotification(item: NotificationRecord): PublicNotification {
@@ -80,8 +81,10 @@ export async function notifyUser(input: NotifyInput) {
   };
 
   try {
-    await sendMail({ to: user.email, subject: `[CINEWAVE] ${record.title}`, text: record.body });
-    record.emailSentAt = new Date().toISOString();
+    if (input.sendEmail !== false) {
+      await sendMail({ to: user.email, subject: `[CINEWAVE] ${record.title}`, text: record.body });
+      record.emailSentAt = new Date().toISOString();
+    }
   } catch (error) {
     console.error("Không gửi được email thông báo", error);
   }

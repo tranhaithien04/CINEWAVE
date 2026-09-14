@@ -6,6 +6,9 @@ export const NOTIFICATION_TYPES = [
   "AGE_FAILED",
   "BOOKING_CANCELLED",
   "BOOKING_REFUNDED",
+  "TICKET_CHECKED_IN",
+  "REFUND_READY",
+  "ADMIN_BROADCAST",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];

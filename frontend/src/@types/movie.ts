@@ -31,4 +31,5 @@ export type Showtime = {
   startsAt: string;
   priceBase: number;
   closed?: boolean;
+  blockedSeats?: string[];
 };

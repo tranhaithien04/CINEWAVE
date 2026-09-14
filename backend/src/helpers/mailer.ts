@@ -1,25 +1,75 @@
+import nodemailer from "nodemailer";
+
+import { getRuntimeEnvSync } from "./system-settings.js";
+
 type MailInput = {
   to: string;
   subject: string;
   text: string;
+  html?: string;
 };
 
-export async function sendMail({ to, subject, text }: MailInput) {
-  const host = process.env.SMTP_HOST;
+export type MailResult = {
+  sent: boolean;
+  transport: "smtp" | "console" | "console-fallback";
+  error?: string;
+};
+
+function smtpConfig() {
+  const host = getRuntimeEnvSync("SMTP_HOST", process.env.SMTP_HOST ?? "").trim();
+  const port = Number(getRuntimeEnvSync("SMTP_PORT", process.env.SMTP_PORT ?? "587") || 587);
+  const user = getRuntimeEnvSync("SMTP_USER", process.env.SMTP_USER ?? "").trim();
+  // Gmail App Password may be pasted with spaces — strip them.
+  const pass = getRuntimeEnvSync("SMTP_PASS", process.env.SMTP_PASS ?? "").replace(/\s+/g, "");
+  const from =
+    getRuntimeEnvSync("MAIL_FROM", process.env.MAIL_FROM ?? "").trim() ||
+    "CINEWAVE <no-reply@cinewave.vn>";
+  return { host, port, user, pass, from };
+}
+
+function logMailDev(to: string, subject: string, text: string, reason?: string) {
+  const prefix = reason ? `[mail:fallback ${reason}]` : "[mail:dev]";
+  console.log(`${prefix} to=${to} subject=${subject}\n${text}`);
+}
+
+export async function sendMail({ to, subject, text, html }: MailInput): Promise<MailResult> {
+  const { host, port, user, pass, from } = smtpConfig();
+
   if (!host) {
-    console.log(`[mail:dev] to=${to} subject=${subject}\n${text}`);
-    return { sent: true, transport: "console" as const };
+    logMailDev(to, subject, text);
+    return { sent: true, transport: "console" };
   }
 
-  const payload = {
-    host,
-    port: Number(process.env.SMTP_PORT ?? 587),
-    user: process.env.SMTP_USER,
-    from: process.env.MAIL_FROM ?? "CINEWAVE <no-reply@cinewave.vn>",
-    to,
-    subject,
-    text,
-  };
-  console.log(`[mail:smtp] queued`, { to, subject, host: payload.host });
-  return { sent: true, transport: "smtp" as const };
+  try {
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      requireTLS: port === 587,
+      auth: user && pass ? { user, pass } : undefined,
+    });
+
+    await transporter.sendMail({
+      from,
+      to,
+      subject,
+      text,
+      html: html ?? undefined,
+    });
+
+    return { sent: true, transport: "smtp" };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "SMTP send failed";
+    console.error(`[mail:smtp-error] ${message}`);
+    logMailDev(to, subject, text, "smtp-failed");
+    // Do not crash register/payment flows when mail provider rejects credentials.
+    return { sent: false, transport: "console-fallback", error: message };
+  }
+}
+
+export function appBaseUrl() {
+  return getRuntimeEnvSync(
+    "NEXT_PUBLIC_APP_URL",
+    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+  ).replace(/\/$/, "");
 }

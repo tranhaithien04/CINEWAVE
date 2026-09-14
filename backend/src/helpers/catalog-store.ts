@@ -81,13 +81,13 @@ const seedMovies: MovieRecord[] = [
 ];
 
 const seedShowtimes: ShowtimeRecord[] = [
-  { id: "st-1", movieSlug: "dao-hai-tac", cinema: "CINEWAVE Landmark 81", room: "IMAX 1", startsAt: "2026-09-13T18:30:00+07:00", priceBase: 120000, closed: false },
-  { id: "st-2", movieSlug: "dao-hai-tac", cinema: "CINEWAVE Landmark 81", room: "IMAX 1", startsAt: "2026-09-13T21:00:00+07:00", priceBase: 140000, closed: false },
-  { id: "st-6", movieSlug: "dao-hai-tac", cinema: "CINEWAVE Landmark 81", room: "IMAX 1", startsAt: "2026-09-14T19:00:00+07:00", priceBase: 130000, closed: false },
-  { id: "st-3", movieSlug: "dem-ha-noi", cinema: "CINEWAVE Vincom", room: "Hall 3", startsAt: "2026-09-13T19:15:00+07:00", priceBase: 95000, closed: false },
-  { id: "st-7", movieSlug: "dem-ha-noi", cinema: "CINEWAVE Vincom", room: "Hall 3", startsAt: "2026-09-14T20:30:00+07:00", priceBase: 95000, closed: false },
-  { id: "st-4", movieSlug: "vung-toi", cinema: "CINEWAVE Vincom", room: "Hall 2", startsAt: "2026-09-13T20:00:00+07:00", priceBase: 110000, closed: false },
-  { id: "st-5", movieSlug: "khong-loi-thoat", cinema: "CINEWAVE Landmark 81", room: "Hall 5", startsAt: "2026-09-13T22:10:00+07:00", priceBase: 105000, closed: false },
+  { id: "st-1", movieSlug: "dao-hai-tac", cinema: "CINEWAVE Landmark 81", room: "IMAX 1", startsAt: "2026-09-13T18:30:00+07:00", priceBase: 120000, closed: false, blockedSeats: [] },
+  { id: "st-2", movieSlug: "dao-hai-tac", cinema: "CINEWAVE Landmark 81", room: "IMAX 1", startsAt: "2026-09-13T21:00:00+07:00", priceBase: 140000, closed: false, blockedSeats: [] },
+  { id: "st-6", movieSlug: "dao-hai-tac", cinema: "CINEWAVE Landmark 81", room: "IMAX 1", startsAt: "2026-09-14T19:00:00+07:00", priceBase: 130000, closed: false, blockedSeats: [] },
+  { id: "st-3", movieSlug: "dem-ha-noi", cinema: "CINEWAVE Vincom", room: "Hall 3", startsAt: "2026-09-13T19:15:00+07:00", priceBase: 95000, closed: false, blockedSeats: [] },
+  { id: "st-7", movieSlug: "dem-ha-noi", cinema: "CINEWAVE Vincom", room: "Hall 3", startsAt: "2026-09-14T20:30:00+07:00", priceBase: 95000, closed: false, blockedSeats: [] },
+  { id: "st-4", movieSlug: "vung-toi", cinema: "CINEWAVE Vincom", room: "Hall 2", startsAt: "2026-09-13T20:00:00+07:00", priceBase: 110000, closed: false, blockedSeats: [] },
+  { id: "st-5", movieSlug: "khong-loi-thoat", cinema: "CINEWAVE Landmark 81", room: "Hall 5", startsAt: "2026-09-13T22:10:00+07:00", priceBase: 105000, closed: false, blockedSeats: [] },
 ];
 
 export async function ensureCatalogSeed() {
@@ -207,6 +207,7 @@ export async function ensureSampleShowtimes(movieSlug: string) {
     startsAt: slot.startsAt,
     priceBase: slot.priceBase,
     closed: false,
+    blockedSeats: [],
   }));
 
   await ShowtimeModel.insertMany(docs);

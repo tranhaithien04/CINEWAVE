@@ -9,11 +9,15 @@ export function BookingSummary({
   priceBase,
   onContinue,
   pending = false,
+  continueLabel = "Tiếp tục",
+  pendingLabel = "Đang giữ ghế…",
 }: {
   seats: Seat[];
   priceBase: number;
   onContinue: () => void;
   pending?: boolean;
+  continueLabel?: string;
+  pendingLabel?: string;
 }) {
   const total = seats.reduce((sum, seat) => sum + seatPrice(priceBase, seat.type), 0);
   const labels = seats.map((seat) => `${seat.row}${seat.number}`).join(", ");
@@ -35,7 +39,7 @@ export function BookingSummary({
           disabled={seats.length === 0 || pending}
           onClick={onContinue}
         >
-          {pending ? "Đang giữ ghế…" : "Tiếp tục"}
+          {pending ? pendingLabel : continueLabel}
         </Button>
       </div>
     </div>

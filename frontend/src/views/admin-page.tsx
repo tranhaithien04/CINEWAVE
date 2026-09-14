@@ -144,8 +144,10 @@ export function AdminPage() {
         <Card className="rounded-2xl border-white/10 bg-white/[0.02] backdrop-blur-xl">
           <CardHeader className="border-b border-white/5 pb-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold text-white">Doanh thu theo phim</CardTitle>
-              <span className="text-xs text-muted-foreground">Theo tổng giá vé</span>
+                  <CardTitle className="text-base font-semibold text-white">Doanh thu theo phim</CardTitle>
+              <span className="text-xs text-muted-foreground">
+                Vé {formatVnd(revenue?.seatRevenue ?? 0)} · F&B {formatVnd(revenue?.concessionRevenue ?? 0)}
+              </span>
             </div>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">

@@ -2,6 +2,8 @@ import type { Request, Response } from "express";
 
 import * as adminService from "../services/admin.service.js";
 import * as movieImportService from "../services/movie-import.service.js";
+import * as systemSettingsService from "../services/system-settings.service.js";
+import { DomainError } from "../models/errors.js";
 
 export async function overview(_req: Request, res: Response) {
   res.json(await adminService.getOverview());
@@ -90,4 +92,55 @@ export async function listUsers(_req: Request, res: Response) {
 
 export async function changeUserRole(req: Request, res: Response) {
   res.json({ user: await adminService.changeUserRole(String(req.params.id), req.body) });
+}
+
+export async function listRooms(_req: Request, res: Response) {
+  res.json({ rooms: await adminService.listRooms() });
+}
+
+export async function updateRoomBlockedSeats(req: Request, res: Response) {
+  res.json(await adminService.updateRoomBlockedSeats(req.body));
+}
+
+export async function listCinemas(_req: Request, res: Response) {
+  res.json({ cinemas: await adminService.listCinemas() });
+}
+
+export async function listConcessions(_req: Request, res: Response) {
+  res.json({ items: await adminService.listAdminConcessions() });
+}
+
+export async function upsertConcession(req: Request, res: Response) {
+  res.status(201).json({ item: await adminService.upsertAdminConcession(req.body) });
+}
+
+export async function updateConcession(req: Request, res: Response) {
+  res.json({
+    item: await adminService.upsertAdminConcession({ ...req.body, id: String(req.params.id) }),
+  });
+}
+
+export async function deleteConcession(req: Request, res: Response) {
+  res.json(await adminService.removeAdminConcession(String(req.params.id)));
+}
+
+export async function listAgeVerifications(_req: Request, res: Response) {
+  res.json({ verifications: await adminService.listAdminAgeVerifications() });
+}
+
+export async function broadcast(req: Request, res: Response) {
+  res.json(await adminService.broadcastNotification(req.body));
+}
+
+export async function getSystemSettings(_req: Request, res: Response) {
+  res.json(await systemSettingsService.getAdminSystemSettings());
+}
+
+export async function patchSystemSettings(req: Request, res: Response) {
+  if (!req.userId) throw new DomainError("UNAUTHORIZED", "Vui lòng đăng nhập", 401);
+  res.json(await systemSettingsService.patchAdminSystemSettings(req.userId, req.body));
+}
+
+export async function getSystemStatus(_req: Request, res: Response) {
+  res.json(await systemSettingsService.getAdminSystemStatus());
 }

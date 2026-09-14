@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import type { AgeRating } from "@/@types/movie";
-import { submitAgeVerification } from "@/api/age-verification";
+import { submitAgeVerification, type CccdQrFields } from "@/api/age-verification";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -31,6 +31,61 @@ export function needsAgeGate(rating: AgeRating) {
 
 type GateStep = "idle" | "preview" | "scanning" | "success" | "fail";
 
+function formatGender(value?: string | null) {
+  if (!value) return null;
+  const raw = value.trim().toUpperCase();
+  if (raw === "NAM" || raw === "MALE" || raw === "M") return "Nam";
+  if (raw === "NỮ" || raw === "NU" || raw === "FEMALE" || raw === "F") return "Nữ";
+  return value;
+}
+
+function QrInfoPanel({
+  qr,
+  fallback,
+}: {
+  qr?: CccdQrFields | null;
+  fallback: { fullName?: string | null; dob?: string | null; idMasked?: string | null };
+}) {
+  const rows: Array<{ label: string; value: string }> = [];
+  const name = qr?.fullName || fallback.fullName;
+  const dob = qr?.dob || fallback.dob;
+  const idNumber = qr?.idNumber || fallback.idMasked;
+  if (idNumber) rows.push({ label: "Số CCCD", value: idNumber });
+  if (qr?.oldId) rows.push({ label: "CMND cũ", value: qr.oldId });
+  if (name) rows.push({ label: "Họ và tên", value: name });
+  if (dob) rows.push({ label: "Ngày sinh", value: dob });
+  const gender = formatGender(qr?.gender);
+  if (gender) rows.push({ label: "Giới tính", value: gender });
+  if (qr?.address) rows.push({ label: "Nơi thường trú", value: qr.address });
+  if (qr?.issueDate) rows.push({ label: "Ngày cấp", value: qr.issueDate });
+
+  if (!rows.length) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        {qr?.decoded === false
+          ? "Không đọc được mã QR trên CCCD. Hệ thống dùng OCR chữ in."
+          : "Chưa có trường thông tin từ mã QR."}
+      </p>
+    );
+  }
+
+  return (
+    <div className="w-full space-y-2 text-left">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-300">
+        {qr?.decoded ? "Thông tin từ mã QR CCCD" : "Thông tin đọc được (OCR)"}
+      </p>
+      <dl className="space-y-1.5 rounded-xl border border-white/10 bg-black/30 p-3">
+        {rows.map((row) => (
+          <div key={row.label} className="grid grid-cols-[7.5rem_1fr] gap-2 text-xs">
+            <dt className="text-muted-foreground">{row.label}</dt>
+            <dd className="font-medium text-white break-words">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
 export function AgeGateDialog({
   open,
   rating,
@@ -49,6 +104,9 @@ export function AgeGateDialog({
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [idMasked, setIdMasked] = useState<string | null>(null);
+  const [fullName, setFullName] = useState<string | null>(null);
+  const [dob, setDob] = useState<string | null>(null);
+  const [qr, setQr] = useState<CccdQrFields | null>(null);
   const [computedAge, setComputedAge] = useState<number | null>(null);
   const [failMessage, setFailMessage] = useState<string | null>(null);
   const age = requiredAge[rating];
@@ -66,6 +124,9 @@ export function AgeGateDialog({
   function reset() {
     setPreviewFile(null);
     setIdMasked(null);
+    setFullName(null);
+    setDob(null);
+    setQr(null);
     setComputedAge(null);
     setFailMessage(null);
     setStep("idle");
@@ -97,11 +158,13 @@ export function AgeGateDialog({
         movieSlug,
       });
       setIdMasked(result.idMasked);
+      setFullName(result.fullName ?? result.qr?.fullName ?? null);
+      setDob(result.dob ?? result.qr?.dob ?? null);
+      setQr(result.qr ?? null);
       setComputedAge(result.computedAge);
       if (result.passed) {
         setStep("success");
-        toast.success(result.message || "Đủ tuổi xem suất này. Không lưu ảnh CCCD.");
-        onPassed();
+        toast.success(result.message || "Đủ tuổi xem suất này.");
       } else {
         setFailMessage(result.message || "Không nhận diện được giấy tờ.");
         setStep("fail");
@@ -122,7 +185,7 @@ export function AgeGateDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="rounded-2xl border-white/10 sm:max-w-md">
+      <DialogContent className="rounded-2xl border-white/10 sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-xl font-bold tracking-tight text-white">
             <ShieldCheck className="h-5 w-5 text-cyan-400" strokeWidth={1.75} />
@@ -142,29 +205,32 @@ export function AgeGateDialog({
             <div className="absolute bottom-2 right-2 h-5 w-5 border-b-2 border-r-2 border-cyan-400" />
             <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
             <p className="mt-3 font-medium text-white">Đang nhận diện…</p>
-            <p className="text-xs text-gray-400">YOLO + OCR + đối chiếu QR. Không hiển thị họ tên đầy đủ.</p>
+            <p className="text-xs text-gray-400">YOLO + OCR + giải mã QR CCCD</p>
           </div>
         ) : null}
 
         {step === "success" ? (
-          <div className="flex flex-col items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
             <CheckCircle2 className="h-8 w-8 text-emerald-400" />
             <p className="font-semibold">Đủ điều kiện xem</p>
             {computedAge != null ? (
-              <p className="text-xs text-muted-foreground">Tuổi đã tính: {computedAge}</p>
+              <p className="text-xs text-muted-foreground">Tuổi đã tính: {computedAge}+ (yêu cầu {age}+)</p>
             ) : null}
-            {idMasked ? <p className="text-xs text-muted-foreground">CCCD: {idMasked}</p> : null}
-            <p className="text-xs text-muted-foreground">Chỉ lưu kết quả đạt / không đạt.</p>
+            <QrInfoPanel qr={qr} fallback={{ fullName, dob, idMasked }} />
+            <p className="text-[11px] text-muted-foreground">Ảnh CCCD không được lưu. Chỉ dùng kết quả xác minh cho suất này.</p>
           </div>
         ) : null}
 
         {step === "fail" ? (
-          <div className="flex flex-col items-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 p-6 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-5 text-center">
             <XCircle className="h-8 w-8 text-destructive" />
             <p className="font-semibold">Không xác minh được</p>
             <p className="text-xs text-muted-foreground">
               {failMessage || "Chụp lại mặt trước, đủ sáng, không chói, không che mã QR."}
             </p>
+            {qr || fullName || dob || idMasked ? (
+              <QrInfoPanel qr={qr} fallback={{ fullName, dob, idMasked }} />
+            ) : null}
           </div>
         ) : null}
 
@@ -203,7 +269,7 @@ export function AgeGateDialog({
 
         <DialogFooter className="gap-2 sm:justify-end">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Để sau
+            Quay lại
           </Button>
           {step === "preview" ? (
             <Button onClick={() => void scan()} className="rounded-xl">
@@ -218,6 +284,11 @@ export function AgeGateDialog({
               className="rounded-xl"
             >
               Chụp lại
+            </Button>
+          ) : null}
+          {step === "success" ? (
+            <Button onClick={() => onPassed()} className="rounded-xl">
+              Tiếp tục thanh toán
             </Button>
           ) : null}
         </DialogFooter>

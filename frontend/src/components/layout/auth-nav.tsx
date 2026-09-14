@@ -72,6 +72,11 @@ export function AuthNav() {
             <Link href={paths.admin}>Quản trị</Link>
           </DropdownMenuItem>
         ) : null}
+        {user.role === "STAFF" || user.role === "ADMIN" ? (
+          <DropdownMenuItem asChild>
+            <Link href={paths.staff}>Soát vé</Link>
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem
           onClick={() => {
             void logout().then(() => toast.success("Đã đăng xuất"));

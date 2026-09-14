@@ -32,3 +32,12 @@ export async function listCinemas(_req: Request, res: Response) {
   const cinemas = await catalogService.listPublicCinemas();
   res.json({ cinemas });
 }
+
+export async function listSeats(req: Request, res: Response) {
+  const data = await catalogService.listPublicSeats(String(req.params.id), req.userId);
+  res.json(data);
+}
+
+export async function listConcessions(_req: Request, res: Response) {
+  res.json({ items: await catalogService.listConcessions() });
+}

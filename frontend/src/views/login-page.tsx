@@ -3,12 +3,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Eye, EyeOff, Film, ShieldCheck, Sparkles, UserCheck } from "lucide-react";
+import { Eye, EyeOff, Film, ScanLine, ShieldCheck, Sparkles, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { ApiError } from "@/api/client";
+import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +25,19 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("error");
+    if (!code) return;
+    const messages: Record<string, string> = {
+      google_denied: "Bạn đã hủy đăng nhập Google.",
+      google_failed: "Không đăng nhập được bằng Google. Thử lại.",
+      google_config: "Chưa cấu hình Google OAuth trên server.",
+    };
+    const message = messages[code] ?? "Đăng nhập Google thất bại.";
+    setError(message);
+    toast.error(message);
+  }, []);
+
   const {
     register,
     handleSubmit,
@@ -37,12 +51,23 @@ export function LoginPage() {
       const user = await login(values);
       toast.success(`Chào mừng ${user.fullName || "bạn"} quay trở lại!`);
       const raw = new URLSearchParams(window.location.search).get("next");
-      const next = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : paths.home;
-      router.push(next.startsWith("/admin") && user.role !== "ADMIN" ? paths.home : next);
+      const next = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : null;
+      if (next?.startsWith("/admin") && user.role !== "ADMIN") {
+        router.push(user.role === "STAFF" ? paths.staff : paths.home);
+      } else if (next) {
+        router.push(next);
+      } else if (user.role === "STAFF") {
+        router.push(paths.staff);
+      } else {
+        router.push(paths.home);
+      }
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Không đăng nhập được";
       setError(message);
       toast.error(message);
+      if (err instanceof ApiError && err.code === "EMAIL_NOT_VERIFIED") {
+        router.push(`${paths.verifyEmail}?email=${encodeURIComponent(values.email)}`);
+      }
     }
   }
 
@@ -86,7 +111,7 @@ export function LoginPage() {
                 </span>
                 <span className="text-[10px] text-gray-400">Tài khoản demo</span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -94,7 +119,16 @@ export function LoginPage() {
                   className="rounded-xl border-cyan-500/30 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/15"
                   onClick={() => fillCredentials("demo@cinewave.vn", "password1")}
                 >
-                  <UserCheck className="mr-1.5 h-3.5 w-3.5" /> Khách Demo
+                  <UserCheck className="mr-1.5 h-3.5 w-3.5" /> Khách
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl border-emerald-500/30 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/15"
+                  onClick={() => fillCredentials("staff@cinewave.vn", "password1")}
+                >
+                  <ScanLine className="mr-1.5 h-3.5 w-3.5" /> Staff
                 </Button>
                 <Button
                   type="button"
@@ -103,7 +137,7 @@ export function LoginPage() {
                   className="rounded-xl border-amber-500/30 text-xs font-semibold text-amber-300 hover:bg-amber-500/15"
                   onClick={() => fillCredentials("admin@cinewave.vn", "password1")}
                 >
-                  <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Quản trị Admin
+                  <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Admin
                 </Button>
               </div>
             </div>
@@ -164,6 +198,12 @@ export function LoginPage() {
             >
               {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập ngay →"}
             </Button>
+            <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-gray-500">
+              <span className="h-px flex-1 bg-white/10" />
+              hoặc
+              <span className="h-px flex-1 bg-white/10" />
+            </div>
+            <GoogleAuthButton />
             <p className="text-center text-sm text-gray-400">
               Chưa có tài khoản?{" "}
               <Button asChild variant="link" className="h-auto p-0 font-semibold text-cyan-400 hover:text-cyan-300">

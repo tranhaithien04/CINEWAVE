@@ -39,6 +39,11 @@ export async function listBookings() {
   return toPlainList<BookingRecord>(docs);
 }
 
+export async function listBookingsByShowtime(showtimeId: string) {
+  const docs = await BookingModel.find({ showtimeId }).lean();
+  return toPlainList<BookingRecord>(docs);
+}
+
 export async function getBookingById(id: string) {
   const doc = await BookingModel.findOne({ id }).lean();
   return toPlain<BookingRecord>(doc);
@@ -46,6 +51,21 @@ export async function getBookingById(id: string) {
 
 export async function getBookingByCode(code: string) {
   const doc = await BookingModel.findOne({ code }).lean();
+  return toPlain<BookingRecord>(doc);
+}
+
+export async function getBookingByPaymentCode(paymentCode: string) {
+  const raw = paymentCode.trim();
+  if (!raw) return null;
+  const compact = raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  const doc = await BookingModel.findOne({
+    $or: [{ paymentCode: raw }, { paymentCode: compact }, { code: raw }],
+  }).lean();
+  return toPlain<BookingRecord>(doc);
+}
+
+export async function getBookingBySepayTransactionId(id: string) {
+  const doc = await BookingModel.findOne({ sepayTransactionId: String(id) }).lean();
   return toPlain<BookingRecord>(doc);
 }
 

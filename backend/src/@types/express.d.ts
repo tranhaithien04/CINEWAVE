@@ -5,6 +5,7 @@ declare global {
     interface Request {
       userId?: string;
       userRole?: "CUSTOMER" | "STAFF" | "ADMIN";
+      rawBody?: Buffer;
     }
   }
 }
