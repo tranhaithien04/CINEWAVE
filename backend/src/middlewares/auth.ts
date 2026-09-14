@@ -21,7 +21,9 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
 }
 
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
-  const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
+  const authHeader = req.headers.authorization;
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : undefined;
+  const token = bearerToken || (req.cookies?.[ACCESS_COOKIE] as string | undefined);
   if (!token) {
     next(new DomainError("UNAUTHORIZED", "Vui lòng đăng nhập", 401));
     return;

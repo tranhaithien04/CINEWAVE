@@ -32,22 +32,28 @@ function frontendUrl(path = "/") {
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+/** Web: cookies. Mobile: tokens in JSON body. Register may return pendingVerification (no session). */
 export async function register(req: Request, res: Response) {
   const result = await registerUser(req.body);
+  if ("user" in result && "tokens" in result) {
+    setAuthCookies(res, result.tokens);
+    res.status(201).json({ user: result.user, tokens: result.tokens });
+    return;
+  }
   res.status(201).json(result);
 }
 
 export async function login(req: Request, res: Response) {
   const { user, tokens } = await loginUser(req.body);
   setAuthCookies(res, tokens);
-  res.status(200).json({ user });
+  res.status(200).json({ user, tokens });
 }
 
 export async function verifyEmail(req: Request, res: Response) {
   const token = typeof req.body?.token === "string" ? req.body.token : req.query.token;
   const { user, tokens } = await verifyEmailToken(token);
   setAuthCookies(res, tokens);
-  res.status(200).json({ user, verified: true });
+  res.status(200).json({ user, tokens, verified: true });
 }
 
 export async function resendVerification(req: Request, res: Response) {
@@ -99,9 +105,10 @@ export async function logout(req: Request, res: Response) {
 }
 
 export async function refresh(req: Request, res: Response) {
-  const { user, tokens } = await refreshSession(req.cookies?.[REFRESH_COOKIE]);
+  const token = req.body?.refreshToken || req.cookies?.[REFRESH_COOKIE];
+  const { user, tokens } = await refreshSession(token);
   setAuthCookies(res, tokens);
-  res.status(200).json({ user });
+  res.status(200).json({ user, tokens });
 }
 
 export async function me(req: Request, res: Response) {
