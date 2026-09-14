@@ -1,6 +1,7 @@
 import { getMovieBySlug, getShowtimeById } from "./catalog-store.js";
 import { listBookings } from "./booking-store.js";
 import { notifyUser } from "../services/notification.service.js";
+import { purgeCccdTmp } from "../services/age-verification.service.js";
 
 const HOLD_WARN_MS = 2 * 60 * 1000;
 const SHOWTIME_REMIND_MS = 60 * 60 * 1000;
@@ -8,7 +9,7 @@ const SHOWTIME_REMIND_MS = 60 * 60 * 1000;
 export async function expireHolds() {}
 export async function expirePayments() {}
 export async function reconcilePayments() {}
-export async function purgeCccdTmp() {}
+export { purgeCccdTmp };
 
 export async function warnHoldExpiring() {
   const now = Date.now();

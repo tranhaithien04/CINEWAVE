@@ -25,8 +25,15 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="vi" className={`dark ${sans.variable} ${display.variable}`}>
-      <body className="min-h-screen bg-[#0a0c16] font-sans text-foreground antialiased">
+    <html
+      lang="vi"
+      className={`dark ${sans.variable} ${display.variable}`}
+      suppressHydrationWarning
+    >
+      <body
+        className="min-h-screen bg-[#0a0c16] font-sans text-foreground antialiased"
+        suppressHydrationWarning
+      >
         <Providers>
           <SiteLayout>{children}</SiteLayout>
         </Providers>

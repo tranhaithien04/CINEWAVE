@@ -6,3 +6,5 @@ data/users.json
 data/catalog.json
 data/bookings.json
 data/notifications.json
+data/age-verifications.json
+uploads
