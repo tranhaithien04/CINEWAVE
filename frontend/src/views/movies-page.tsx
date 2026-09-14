@@ -44,7 +44,7 @@ export function MoviesPage() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Tìm tên phim hoặc thể loại..."
-            className="rounded-xl border-white/10 bg-cinema-900/80 pl-9 backdrop-blur-md transition-all duration-300 focus:border-cyan-400 focus:shadow-neon"
+            className="rounded-xl border-white/10 bg-cinema-900/80 pl-9 backdrop-blur-md transition-[border-color,box-shadow] duration-300 focus:border-cyan-400 focus:shadow-neon"
           />
         </div>
       </div>

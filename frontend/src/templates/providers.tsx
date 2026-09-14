@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { MotionProvider } from "@/components/motion";
 import { SmoothScrollProvider } from "@/components/providers/smooth-scroll-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -13,10 +14,12 @@ export function Providers({ children }: { children: ReactNode }) {
     <AuthProvider>
       <NotificationProvider>
         <CatalogProvider>
-          <SmoothScrollProvider>
-            {children}
-            <Toaster />
-          </SmoothScrollProvider>
+          <MotionProvider>
+            <SmoothScrollProvider>
+              {children}
+              <Toaster />
+            </SmoothScrollProvider>
+          </MotionProvider>
         </CatalogProvider>
       </NotificationProvider>
     </AuthProvider>

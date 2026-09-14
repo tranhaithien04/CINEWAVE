@@ -397,7 +397,7 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
       {pay === "idle" ? (
         <Button
           size="lg"
-          className="h-12 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 font-semibold text-white shadow-xl shadow-cyan-500/20 transition-all duration-300 hover:scale-[1.01] hover:from-cyan-400 hover:to-blue-500"
+          className="h-12 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 font-semibold text-white shadow-xl shadow-cyan-500/20 transition-[transform,box-shadow] duration-300 hover:scale-[1.01] hover:from-cyan-400 hover:to-blue-500"
           onClick={() => {
             if (needsAgeGate(movie.rating) && !verified) {
               setGateOpen(true);

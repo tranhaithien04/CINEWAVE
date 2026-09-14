@@ -77,7 +77,7 @@ export function RegisterPage() {
                 id="fullName"
                 autoComplete="name"
                 placeholder="Nguyễn Văn A"
-                className="rounded-xl border-white/10 bg-white/5 transition-all focus:border-cyan-400 focus:shadow-neon"
+                className="rounded-xl border-white/10 bg-white/5 transition-[border-color,box-shadow] focus:border-cyan-400 focus:shadow-neon"
                 {...register("fullName")}
               />
               {errors.fullName ? <p className="text-xs text-rose-400">{errors.fullName.message}</p> : null}
@@ -92,7 +92,7 @@ export function RegisterPage() {
                 type="email"
                 autoComplete="email"
                 placeholder="ban@email.com"
-                className="rounded-xl border-white/10 bg-white/5 transition-all focus:border-cyan-400 focus:shadow-neon"
+                className="rounded-xl border-white/10 bg-white/5 transition-[border-color,box-shadow] focus:border-cyan-400 focus:shadow-neon"
                 {...register("email")}
               />
               {errors.email ? <p className="text-xs text-rose-400">{errors.email.message}</p> : null}
@@ -108,7 +108,7 @@ export function RegisterPage() {
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
                   placeholder="Tạo mật khẩu an toàn"
-                  className="rounded-xl border-white/10 bg-white/5 pr-10 transition-all focus:border-cyan-400 focus:shadow-neon"
+                  className="rounded-xl border-white/10 bg-white/5 pr-10 transition-[border-color,box-shadow] focus:border-cyan-400 focus:shadow-neon"
                   {...register("password")}
                 />
                 <button

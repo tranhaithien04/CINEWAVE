@@ -10,11 +10,13 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { paths } from "@/routes/paths";
 import { cn } from "@/utils/cn";
 
+const notificationTimeFmt = new Intl.DateTimeFormat("vi-VN", {
+  dateStyle: "short",
+  timeStyle: "short",
+});
+
 function timeLabel(iso: string) {
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(iso));
+  return notificationTimeFmt.format(new Date(iso));
 }
 
 export function NotificationsPage() {

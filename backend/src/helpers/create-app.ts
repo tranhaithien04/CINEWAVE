@@ -2,6 +2,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 
+import { mongoStatus } from "../db/mongo.js";
 import { errorHandler } from "../middlewares/error.js";
 import { mountRoutes } from "../routes/index.js";
 
@@ -30,7 +31,7 @@ export function createApp() {
   app.use(cookieParser());
 
   app.get("/health", (_req, res) => {
-    res.json({ ok: true, service: "cinewave-api" });
+    res.json({ ok: true, service: "cinewave-api", db: mongoStatus() });
   });
 
   mountRoutes(app);

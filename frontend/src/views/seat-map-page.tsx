@@ -51,7 +51,10 @@ export function SeatMapPage({ showtimeId }: { showtimeId: string }) {
   const [holding, setHolding] = useState(false);
   const [holdUntil] = useState(() => new Date(Date.now() + 8 * 60 * 1000));
 
-  const selectedSeats = seats.filter((seat) => selectedIds.includes(seat.id));
+  const selectedSeats = useMemo(() => {
+    const selected = new Set(selectedIds);
+    return seats.filter((seat) => selected.has(seat.id));
+  }, [seats, selectedIds]);
 
   function toggle(seat: Seat) {
     if (isSeatTaken(seat)) return;
@@ -59,9 +62,11 @@ export function SeatMapPage({ showtimeId }: { showtimeId: string }) {
     setSelectedIds((current) => {
       const partner = couplePartner(seats, seat);
       const bundle = partner ? [seat, partner] : [seat];
+      const currentSet = new Set(current);
 
-      if (current.includes(seat.id)) {
-        return current.filter((id) => !bundle.some((item) => item.id === id));
+      if (currentSet.has(seat.id)) {
+        const remove = new Set(bundle.map((item) => item.id));
+        return current.filter((id) => !remove.has(id));
       }
 
       if (partner && isSeatTaken(partner)) {
@@ -69,7 +74,7 @@ export function SeatMapPage({ showtimeId }: { showtimeId: string }) {
         return current;
       }
 
-      const addIds = bundle.map((item) => item.id).filter((id) => !current.includes(id));
+      const addIds = bundle.map((item) => item.id).filter((id) => !currentSet.has(id));
       const next = [...current, ...addIds];
       if (next.length > MAX_SEATS_PER_BOOKING) {
         toast.error(`Tối đa ${MAX_SEATS_PER_BOOKING} ghế mỗi lần đặt.`);

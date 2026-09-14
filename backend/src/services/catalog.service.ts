@@ -1,5 +1,6 @@
 import { getMovieBySlug, getShowtimeById, listMovies, listShowtimes } from "../helpers/catalog-store.js";
 import { DomainError } from "../models/errors.js";
+import { listSimilarMovies } from "./movie-import.service.js";
 
 export async function listPublicMovies() {
   return listMovies();
@@ -11,6 +12,10 @@ export async function getPublicMovie(slug: string) {
     throw new DomainError("NOT_FOUND", "Không tìm thấy phim", 404);
   }
   return movie;
+}
+
+export async function listPublicSimilar(slug: string) {
+  return listSimilarMovies(slug);
 }
 
 export async function listPublicShowtimes(movieSlug?: string) {

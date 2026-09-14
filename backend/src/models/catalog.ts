@@ -13,6 +13,13 @@ export type MovieRecord = {
   genres: string[];
   nowShowing: boolean;
   trailerUrl?: string;
+  imdbId?: string;
+  tmdbId?: number;
+  imdbRating?: number;
+  imdbVotes?: number;
+  year?: string;
+  director?: string;
+  actors?: string;
 };
 
 export type ShowtimeRecord = {

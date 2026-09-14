@@ -1,7 +1,6 @@
+import { BookingModel } from "../db/models.js";
+import { toPlain, toPlainList } from "../db/mongo.js";
 import type { BookingRecord } from "../models/catalog.js";
-import { readJsonFile, writeJsonFile } from "./json-store.js";
-
-const FILE = "bookings.json";
 
 const seed: BookingRecord[] = [
   {
@@ -28,34 +27,32 @@ const seed: BookingRecord[] = [
   },
 ];
 
-async function readBookings() {
-  return readJsonFile<BookingRecord[]>(FILE, seed);
-}
-
 export async function ensureBookingSeed() {
-  const current = await readJsonFile<BookingRecord[] | null>(FILE, null);
-  if (!current?.length) {
-    await writeJsonFile(FILE, seed);
+  const count = await BookingModel.countDocuments();
+  if (count === 0) {
+    await BookingModel.insertMany(seed);
   }
 }
 
 export async function listBookings() {
-  return readBookings();
+  const docs = await BookingModel.find().sort({ createdAt: -1 }).lean();
+  return toPlainList<BookingRecord>(docs);
 }
 
 export async function getBookingById(id: string) {
-  return (await readBookings()).find((item) => item.id === id) ?? null;
+  const doc = await BookingModel.findOne({ id }).lean();
+  return toPlain<BookingRecord>(doc);
 }
 
 export async function getBookingByCode(code: string) {
-  return (await readBookings()).find((item) => item.code === code) ?? null;
+  const doc = await BookingModel.findOne({ code }).lean();
+  return toPlain<BookingRecord>(doc);
 }
 
 export async function saveBooking(booking: BookingRecord) {
-  const bookings = await readBookings();
-  const index = bookings.findIndex((item) => item.id === booking.id);
-  if (index === -1) bookings.push(booking);
-  else bookings[index] = booking;
-  await writeJsonFile(FILE, bookings);
-  return booking;
+  const doc = await BookingModel.findOneAndUpdate({ id: booking.id }, booking, {
+    new: true,
+    upsert: true,
+  }).lean();
+  return toPlain<BookingRecord>(doc)!;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { motion } from "framer-motion";
+import { m } from "@/components/motion";
 import { ChevronDown, Clapperboard, ScanLine, ShieldCheck, Ticket } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -109,7 +109,7 @@ export function HomePage() {
             <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[350px] w-[600px] rounded-full bg-cyan-500/15 blur-[130px]" />
             <div className="pointer-events-none absolute top-1/2 right-4 h-[250px] w-[250px] rounded-full bg-purple-500/10 blur-[100px]" />
 
-            <motion.div
+            <m.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, ease: "easeOut" }}
@@ -150,12 +150,12 @@ export function HomePage() {
                 <span>Cuộn xuống để khám phá</span>
                 <ChevronDown className="h-4 w-4 animate-bounce" />
               </div>
-            </motion.div>
+            </m.div>
           </section>
 
           {/* ---------------- SECTION 2: 3 CORE TECH FEATURES ---------------- */}
           <section className="flex min-h-screen flex-col items-center justify-center px-4 py-20">
-            <motion.div
+            <m.div
               initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: false, amount: 0.25 }}
@@ -197,7 +197,7 @@ export function HomePage() {
                 ].map((item) => (
                   <div
                     key={item.title}
-                    className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b ${item.accent} p-8 shadow-2xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-400/50`}
+                    className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b ${item.accent} p-8 shadow-2xl backdrop-blur-xl transition-[transform,border-color] duration-300 hover:-translate-y-1 hover:border-cyan-400/50`}
                   >
                     <div className="mb-5 inline-flex rounded-xl border border-white/10 bg-white/5 p-3.5 text-cyan-400">
                       <item.icon className="h-6 w-6" strokeWidth={1.8} />
@@ -207,13 +207,13 @@ export function HomePage() {
                   </div>
                 ))}
               </div>
-            </motion.div>
+            </m.div>
           </section>
 
           {/* ---------------- SECTION 3: SPOTLIGHT FEATURED MOVIE ---------------- */}
           {featured ? (
             <section className="flex min-h-screen flex-col items-center justify-center px-4 py-20">
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: false, amount: 0.25 }}
@@ -222,7 +222,7 @@ export function HomePage() {
               >
                 <Link
                   href={paths.movie(featured.slug)}
-                  className="group relative block overflow-hidden rounded-3xl border border-cyan-500/30 bg-cinema-900/60 shadow-2xl shadow-cyan-500/20 backdrop-blur-xl transition-all duration-500 hover:border-cyan-400"
+                  className="group relative block overflow-hidden rounded-3xl border border-cyan-500/30 bg-cinema-900/60 shadow-2xl shadow-cyan-500/20 backdrop-blur-xl transition-[border-color] duration-500 hover:border-cyan-400"
                 >
                   <div className="relative aspect-[21/9] min-h-[320px] w-full">
                     <Image
@@ -256,7 +256,7 @@ export function HomePage() {
                     </div>
                   </div>
                 </Link>
-              </motion.div>
+              </m.div>
             </section>
           ) : null}
         </div>

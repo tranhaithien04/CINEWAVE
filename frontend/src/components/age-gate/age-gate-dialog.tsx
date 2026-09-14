@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, Loader2, Lock, ShieldCheck, XCircle } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import type { AgeRating } from "@/@types/movie";
@@ -45,18 +45,26 @@ export function AgeGateDialog({
   onPassed: () => void;
 }) {
   const { user } = useAuth();
-  const fileRef = useRef<File | null>(null);
   const [step, setStep] = useState<GateStep>("idle");
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [idMasked, setIdMasked] = useState<string | null>(null);
   const [computedAge, setComputedAge] = useState<number | null>(null);
   const [failMessage, setFailMessage] = useState<string | null>(null);
   const age = requiredAge[rating];
 
+  useEffect(() => {
+    if (!previewFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(previewFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [previewFile]);
+
   function reset() {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    fileRef.current = null;
-    setPreviewUrl(null);
+    setPreviewFile(null);
     setIdMasked(null);
     setComputedAge(null);
     setFailMessage(null);
@@ -65,14 +73,12 @@ export function AgeGateDialog({
 
   function onFile(file: File | undefined) {
     if (!file) return;
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    fileRef.current = file;
-    setPreviewUrl(URL.createObjectURL(file));
+    setPreviewFile(file);
     setStep("preview");
   }
 
   async function scan() {
-    const file = fileRef.current;
+    const file = previewFile;
     if (!file) {
       toast.error("Vui lòng chọn ảnh CCCD");
       return;
@@ -169,7 +175,7 @@ export function AgeGateDialog({
               <li>Chụp thẳng, đủ sáng, tránh phản quang — hiện rõ mã QR.</li>
               <li>Chỉ mặt trước · JPEG / PNG / WEBP · tối đa 5MB.</li>
             </ol>
-            <label className="relative flex cursor-pointer flex-col items-center gap-3 overflow-hidden rounded-2xl border-2 border-dashed border-cyan-500/30 bg-black/40 p-4 text-center transition-all duration-300 hover:border-cyan-400/60 hover:bg-cyan-500/5">
+            <label className="relative flex cursor-pointer flex-col items-center gap-3 overflow-hidden rounded-2xl border-2 border-dashed border-cyan-500/30 bg-black/40 p-4 text-center transition-[border-color,background-color] duration-300 hover:border-cyan-400/60 hover:bg-cyan-500/5">
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"

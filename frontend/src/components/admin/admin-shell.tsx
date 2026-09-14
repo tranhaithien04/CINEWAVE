@@ -78,7 +78,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "group relative inline-flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium whitespace-nowrap transition-all duration-200",
+                    "group relative inline-flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium whitespace-nowrap transition-[background-color,color,transform] duration-200",
                     active
                       ? "border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 shadow-lg shadow-cyan-500/10"
                       : "border border-transparent text-gray-400 hover:border-white/10 hover:bg-white/5 hover:text-white",
