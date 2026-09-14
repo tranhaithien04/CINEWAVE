@@ -4,7 +4,16 @@ import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { AGE_RATINGS, type AgeRating, type Movie } from "@/@types/movie";
-import { createAdminMovie, deleteAdminMovie, updateAdminMovie } from "@/api/admin";
+import {
+  createAdminMovie,
+  deleteAdminMovie,
+  enrichAdminMovie,
+  importAdminMovie,
+  searchAdminCatalog,
+  syncAdminNowPlaying,
+  updateAdminMovie,
+  type OmdbSearchHit,
+} from "@/api/admin";
 import { ApiError } from "@/api/client";
 import { AgeBadge } from "@/components/movies/age-badge";
 import { Badge } from "@/components/ui/badge";
@@ -101,7 +110,87 @@ export function AdminMoviesPage() {
     }
   }
 
+  async function searchImdb() {
+    if (imdbQuery.trim().length < 2) {
+      toast.error("Nhập ít nhất 2 ký tự để tìm IMDb");
+      return;
+    }
+    setImdbSearching(true);
+    try {
+      const data = await searchAdminCatalog(imdbQuery.trim());
+      setImdbHits(data.results);
+      if (!data.results.length) toast.message("OMDb không có kết quả phù hợp");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Không tìm được phim IMDb");
+    } finally {
+      setImdbSearching(false);
+    }
+  }
+
+  async function importHit(hit: OmdbSearchHit) {
+    setImportingId(hit.imdbId);
+    try {
+      await importAdminMovie({
+        imdbId: hit.imdbId,
+        rating: importRating,
+        nowShowing: importNowShowing,
+      });
+      toast.success(`Đã import ${hit.title}`);
+      setImdbHits((current) => current.filter((item) => item.imdbId !== hit.imdbId));
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Không import được phim");
+    } finally {
+      setImportingId(null);
+    }
+  }
+
+  async function enrich(movie: Movie) {
+    setEnrichingId(movie.id);
+    try {
+      await enrichAdminMovie(movie.id);
+      toast.success(`Đã gắn metadata IMDb cho ${movie.title}`);
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Không enrich được phim");
+    } finally {
+      setEnrichingId(null);
+    }
+  }
+
+  async function syncNowPlaying() {
+    setSyncing(true);
+    try {
+      const result = await syncAdminNowPlaying({
+        rating: importRating,
+        limit: 12,
+        region: "VN",
+      });
+      await refresh();
+      const failNote = result.failed.length ? ` · ${result.failed.length} lỗi` : "";
+      const slotNote = result.showtimesFilled ? ` · +${result.showtimesFilled} phim có suất mẫu` : "";
+      toast.success(
+        `Đồng bộ ${result.region}: +${result.imported.length} phim mới, bỏ qua ${result.skipped}${failNote}${slotNote}`,
+      );
+      if (result.failed[0]) {
+        toast.error(`${result.failed[0].title}: ${result.failed[0].reason}`);
+      }
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Không đồng bộ được phim đang chiếu");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   const [search, setSearch] = useState("");
+  const [imdbQuery, setImdbQuery] = useState("");
+  const [imdbHits, setImdbHits] = useState<OmdbSearchHit[]>([]);
+  const [imdbSearching, setImdbSearching] = useState(false);
+  const [importRating, setImportRating] = useState<AgeRating>("T13");
+  const [importNowShowing, setImportNowShowing] = useState(true);
+  const [importingId, setImportingId] = useState<string | null>(null);
+  const [enrichingId, setEnrichingId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   const filteredMovies = movies.filter(
     (m) =>
@@ -129,6 +218,94 @@ export function AdminMoviesPage() {
           + Thêm phim mới
         </Button>
       </div>
+
+      <Card className="rounded-2xl border-white/10 bg-white/[0.02] backdrop-blur-xl">
+        <CardHeader className="border-b border-white/5 pb-4">
+          <CardTitle className="text-base font-semibold text-white">Tìm &amp; import từ IMDb (OMDb)</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Tìm từng phim trên IMDb, hoặc đồng bộ danh sách đang chiếu (TMDB now playing, gắn imdbId). Nhãn tuổi P/T13/T16/T18 do bạn chọn trước khi import/đồng bộ.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="flex-1">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tên phim trên IMDb</Label>
+              <Input
+                placeholder="Inception, Dune, Parasite…"
+                value={imdbQuery}
+                onChange={(event) => setImdbQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void searchImdb();
+                }}
+                className="mt-1.5 h-10 rounded-xl border-white/10 bg-white/5"
+              />
+            </div>
+            <div>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nhãn tuổi VN</Label>
+              <select
+                className="mt-1.5 flex h-10 rounded-xl border border-white/10 bg-zinc-900 px-3 text-sm text-white"
+                value={importRating}
+                onChange={(event) => setImportRating(event.target.value as AgeRating)}
+              >
+                {AGE_RATINGS.map((rating) => (
+                  <option key={rating} value={rating}>
+                    {rating}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <label className="flex h-10 items-center gap-2 text-sm text-white">
+              <input
+                type="checkbox"
+                checked={importNowShowing}
+                onChange={(event) => setImportNowShowing(event.target.checked)}
+                className="h-4 w-4 rounded border-white/20 bg-zinc-900 text-cyan-500"
+              />
+              Đang chiếu
+            </label>
+            <Button disabled={imdbSearching} onClick={() => void searchImdb()} className="rounded-xl">
+              {imdbSearching ? "Đang tìm…" : "Tìm IMDb"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={syncing}
+              onClick={() => void syncNowPlaying()}
+              className="rounded-xl border-cyan-500/40"
+            >
+              {syncing ? "Đang đồng bộ…" : "Đồng bộ phim đang chiếu"}
+            </Button>
+          </div>
+          {imdbHits.length ? (
+            <div className="divide-y divide-white/5 rounded-xl border border-white/10">
+              {imdbHits.map((hit) => (
+                <div key={hit.imdbId} className="flex items-center gap-3 p-3">
+                  <div className="h-14 w-10 shrink-0 overflow-hidden rounded-md bg-zinc-900">
+                    {hit.posterUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={hit.posterUrl} alt="" className="h-full w-full object-cover" />
+                    ) : null}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-white">{hit.title}</p>
+                    <p className="font-mono text-[11px] text-gray-500">
+                      {hit.year} · {hit.imdbId}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    disabled={importingId === hit.imdbId}
+                    className="rounded-lg"
+                    onClick={() => void importHit(hit)}
+                  >
+                    {importingId === hit.imdbId ? "Đang import…" : "Import"}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
 
       <Card className="rounded-2xl border-white/10 bg-white/[0.02] backdrop-blur-xl">
         <CardHeader className="border-b border-white/5 pb-4">
@@ -170,8 +347,12 @@ export function AdminMoviesPage() {
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {movie.durationMin} phút · {movie.genres.join(", ")}
+                      {movie.imdbRating ? ` · IMDb ${movie.imdbRating.toFixed(1)}` : ""}
                     </p>
-                    <p className="font-mono text-[11px] text-gray-500">/{movie.slug}</p>
+                    <p className="font-mono text-[11px] text-gray-500">
+                      /{movie.slug}
+                      {movie.imdbId ? ` · ${movie.imdbId}` : ""}
+                    </p>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -193,6 +374,15 @@ export function AdminMoviesPage() {
                     onClick={() => startEdit(movie)}
                   >
                     Sửa
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={enrichingId === movie.id}
+                    className="rounded-lg border-white/10"
+                    onClick={() => void enrich(movie)}
+                  >
+                    {enrichingId === movie.id ? "…" : movie.imdbId ? "Làm mới IMDb" : "Gắn IMDb"}
                   </Button>
                   <Button
                     size="sm"

@@ -7,6 +7,11 @@ export async function listMovies(_req: Request, res: Response) {
   res.json({ movies });
 }
 
+export async function listSimilar(req: Request, res: Response) {
+  const movies = await catalogService.listPublicSimilar(String(req.params.slug));
+  res.json({ movies });
+}
+
 export async function getMovie(req: Request, res: Response) {
   const movie = await catalogService.getPublicMovie(String(req.params.slug));
   res.json({ movie });

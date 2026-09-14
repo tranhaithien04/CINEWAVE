@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { MovieModel, ShowtimeModel } from "../db/models.js";
 import { toPlain, toPlainList } from "../db/mongo.js";
 import type { MovieRecord, ShowtimeRecord } from "../models/catalog.js";
@@ -94,6 +96,7 @@ export async function ensureCatalogSeed() {
     await MovieModel.insertMany(seedMovies);
     await ShowtimeModel.insertMany(seedShowtimes);
   }
+  await ensureSampleShowtimesForNowShowing();
 }
 
 export async function listMovies() {
@@ -108,6 +111,16 @@ export async function getMovieById(id: string) {
 
 export async function getMovieBySlug(slug: string) {
   const doc = await MovieModel.findOne({ slug }).lean();
+  return toPlain<MovieRecord>(doc);
+}
+
+export async function getMovieByImdbId(imdbId: string) {
+  const doc = await MovieModel.findOne({ imdbId }).lean();
+  return toPlain<MovieRecord>(doc);
+}
+
+export async function getMovieByTmdbId(tmdbId: number) {
+  const doc = await MovieModel.findOne({ tmdbId }).lean();
   return toPlain<MovieRecord>(doc);
 }
 
@@ -143,6 +156,80 @@ export async function saveShowtime(showtime: ShowtimeRecord) {
     upsert: true,
   }).lean();
   return toPlain<ShowtimeRecord>(doc)!;
+}
+
+export async function listShowtimesByMovieSlug(movieSlug: string) {
+  const docs = await ShowtimeModel.find({ movieSlug }).lean();
+  return toPlainList<ShowtimeRecord>(docs);
+}
+
+function pad2(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function vietnamYmd(offsetDays = 0) {
+  const vn = new Date(Date.now() + 7 * 60 * 60 * 1000);
+  vn.setUTCDate(vn.getUTCDate() + offsetDays);
+  return { y: vn.getUTCFullYear(), m: vn.getUTCMonth() + 1, d: vn.getUTCDate() };
+}
+
+function vietnamIso(offsetDays: number, hhmm: string) {
+  const { y, m, d } = vietnamYmd(offsetDays);
+  return `${y}-${pad2(m)}-${pad2(d)}T${hhmm}:00+07:00`;
+}
+
+export async function ensureSampleShowtimes(movieSlug: string) {
+  const existing = await listShowtimesByMovieSlug(movieSlug);
+  if (existing.length) return existing;
+
+  const templates = [
+    { days: 0, time: "18:30", priceBase: 120000, room: "IMAX 1" },
+    { days: 0, time: "21:00", priceBase: 140000, room: "IMAX 1" },
+    { days: 1, time: "19:00", priceBase: 120000, room: "IMAX 1" },
+  ];
+
+  let slots = templates
+    .map((item) => ({
+      ...item,
+      startsAt: vietnamIso(item.days, item.time),
+    }))
+    .filter((item) => new Date(item.startsAt).getTime() > Date.now() + 15 * 60 * 1000);
+
+  if (!slots.length) {
+    slots = [{ days: 1, time: "19:00", priceBase: 120000, room: "IMAX 1", startsAt: vietnamIso(1, "19:00") }];
+  }
+
+  const docs: ShowtimeRecord[] = slots.map((slot) => ({
+    id: `st-${randomUUID().slice(0, 8)}`,
+    movieSlug,
+    cinema: "CINEWAVE Landmark 81",
+    room: slot.room,
+    startsAt: slot.startsAt,
+    priceBase: slot.priceBase,
+    closed: false,
+  }));
+
+  await ShowtimeModel.insertMany(docs);
+  return docs;
+}
+
+export async function ensureSampleShowtimesForNowShowing() {
+  const movies = await listMovies();
+  let moviesFilled = 0;
+  let showtimesCreated = 0;
+  for (const movie of movies) {
+    if (!movie.nowShowing) continue;
+    try {
+      const before = await listShowtimesByMovieSlug(movie.slug);
+      if (before.length) continue;
+      const created = await ensureSampleShowtimes(movie.slug);
+      moviesFilled += 1;
+      showtimesCreated += created.length;
+    } catch (error) {
+      console.warn(`Không tạo suất mẫu cho ${movie.slug}:`, error instanceof Error ? error.message : error);
+    }
+  }
+  return { moviesFilled, showtimesCreated };
 }
 
 export async function removeShowtime(id: string) {

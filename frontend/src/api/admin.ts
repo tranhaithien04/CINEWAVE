@@ -42,6 +42,19 @@ export type MovieInput = {
   trailerUrl?: string;
 };
 
+export type OmdbSearchHit = {
+  imdbId: string;
+  title: string;
+  year: string;
+  posterUrl: string | null;
+};
+
+export type MovieImportInput = {
+  imdbId: string;
+  rating: Movie["rating"];
+  nowShowing?: boolean;
+};
+
 export type ShowtimeInput = {
   movieSlug: string;
   cinema: string;
@@ -65,6 +78,32 @@ export function fetchAdminMovies() {
 
 export function createAdminMovie(body: MovieInput) {
   return api<{ movie: Movie }>("/admin/movies", { method: "POST", body });
+}
+
+export function searchAdminCatalog(query: string) {
+  return api<{ results: OmdbSearchHit[] }>(`/admin/catalog/search?q=${encodeURIComponent(query)}`);
+}
+
+export function importAdminMovie(body: MovieImportInput) {
+  return api<{ movie: Movie }>("/admin/movies/import", { method: "POST", body });
+}
+
+export function enrichAdminMovie(id: string) {
+  return api<{ movie: Movie }>(`/admin/movies/${id}/enrich`, { method: "POST" });
+}
+
+export type SyncNowPlayingResult = {
+  region: string;
+  scanned: number;
+  imported: Movie[];
+  skipped: number;
+  skippedTitles: string[];
+  failed: Array<{ title: string; reason: string }>;
+  showtimesFilled?: number;
+};
+
+export function syncAdminNowPlaying(body?: { rating?: Movie["rating"]; limit?: number; region?: string }) {
+  return api<SyncNowPlayingResult>("/admin/movies/sync-now-playing", { method: "POST", body: body ?? {} });
 }
 
 export function updateAdminMovie(id: string, body: Partial<MovieInput>) {

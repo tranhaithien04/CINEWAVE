@@ -1,4 +1,7 @@
 import "dotenv/config";
+import dns from "node:dns";
+
+dns.setDefaultResultOrder("ipv4first");
 
 import { connectMongo } from "./db/mongo.js";
 import { createApp } from "./helpers/create-app.js";

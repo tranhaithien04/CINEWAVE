@@ -4,6 +4,7 @@ import * as catalogController from "../controllers/catalog.controller.js";
 
 export const moviesRouter = Router();
 moviesRouter.get("/", catalogController.listMovies);
+moviesRouter.get("/:slug/similar", catalogController.listSimilar);
 moviesRouter.get("/:slug", catalogController.getMovie);
 
 export const showtimesRouter = Router();

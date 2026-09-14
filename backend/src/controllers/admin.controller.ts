@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 
 import * as adminService from "../services/admin.service.js";
+import * as movieImportService from "../services/movie-import.service.js";
 
 export async function overview(_req: Request, res: Response) {
   res.json(await adminService.getOverview());
@@ -24,6 +25,23 @@ export async function updateMovie(req: Request, res: Response) {
 
 export async function deleteMovie(req: Request, res: Response) {
   res.json(await adminService.deleteMovie(String(req.params.id)));
+}
+
+export async function searchCatalog(req: Request, res: Response) {
+  const query = typeof req.query.q === "string" ? req.query.q : "";
+  res.json({ results: await movieImportService.searchCatalog(query) });
+}
+
+export async function importMovie(req: Request, res: Response) {
+  res.status(201).json({ movie: await movieImportService.importFromImdb(req.body) });
+}
+
+export async function enrichMovie(req: Request, res: Response) {
+  res.json({ movie: await movieImportService.enrichExistingMovie(String(req.params.id)) });
+}
+
+export async function syncNowPlaying(req: Request, res: Response) {
+  res.json(await movieImportService.syncNowPlaying(req.body));
 }
 
 export async function listShowtimes(_req: Request, res: Response) {

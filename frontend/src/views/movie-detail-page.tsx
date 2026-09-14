@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Clock, MapPin, Play } from "lucide-react";
+import { Clock, MapPin, Play, Star, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatVnd } from "@/data/mock-catalog";
+import { fetchSimilarMovies, type SimilarMovie } from "@/api/catalog";
 import { useCatalog } from "@/hooks/use-catalog";
 import { paths } from "@/routes/paths";
 import { cn } from "@/utils/cn";
@@ -48,6 +49,7 @@ export function MovieDetailPage({ slug }: { slug: string }) {
   const days = useMemo(() => [...new Set(times.map((item) => dayKey(item.startsAt)))], [times]);
   const [day, setDay] = useState("");
   const [trailerOpen, setTrailerOpen] = useState(false);
+  const [similar, setSimilar] = useState<SimilarMovie[]>([]);
   const visible = times.filter((item) => dayKey(item.startsAt) === day);
 
   useEffect(() => {
@@ -55,6 +57,24 @@ export function MovieDetailPage({ slug }: { slug: string }) {
       setDay(days[0] ?? "");
     }
   }, [day, days]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!movie?.tmdbId) {
+      setSimilar([]);
+      return;
+    }
+    fetchSimilarMovies(movie.slug)
+      .then((data) => {
+        if (!cancelled) setSimilar(data.movies);
+      })
+      .catch(() => {
+        if (!cancelled) setSimilar([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [movie?.slug, movie?.tmdbId]);
 
   if (!movie) {
     return (
@@ -88,6 +108,18 @@ export function MovieDetailPage({ slug }: { slug: string }) {
           <div className="space-y-3">
             <h1 className="font-display text-3xl font-black tracking-tight text-white md:text-5xl">{movie.title}</h1>
             <div className="flex flex-wrap items-center gap-3 text-sm text-gray-400">
+              {typeof movie.imdbRating === "number" ? (
+                <span className="inline-flex items-center gap-1 font-semibold text-amber-300">
+                  <Star className="h-4 w-4 fill-current" />
+                  {movie.imdbRating.toFixed(1)}
+                  {movie.imdbVotes ? (
+                    <span className="font-normal text-gray-500">
+                      ({movie.imdbVotes.toLocaleString("vi-VN")} votes)
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
+              {movie.year ? <span>{movie.year}</span> : null}
               <span className="inline-flex items-center gap-1">
                 <Clock className="h-4 w-4 text-cyan-400" />
                 {movie.durationMin} phút
@@ -98,6 +130,15 @@ export function MovieDetailPage({ slug }: { slug: string }) {
                 </Badge>
               ))}
             </div>
+            {movie.director || movie.actors ? (
+              <p className="flex items-start gap-2 text-sm text-gray-400">
+                <Users className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
+                <span>
+                  {movie.director ? <span className="text-gray-300">Đạo diễn: {movie.director}. </span> : null}
+                  {movie.actors ? `Diễn viên: ${movie.actors}` : null}
+                </span>
+              </p>
+            ) : null}
             <p className="max-w-2xl text-muted-foreground">{movie.description}</p>
             <Button
               type="button"
@@ -170,6 +211,40 @@ export function MovieDetailPage({ slug }: { slug: string }) {
           </div>
         </div>
       </div>
+
+      {similar.length ? (
+        <section className="mx-auto mt-12 max-w-6xl px-4">
+          <h2 className="font-display text-xl font-semibold tracking-tight text-white">Phim tương tự</h2>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {similar.map((item) => {
+              const content = (
+                <article className="group overflow-hidden rounded-xl border border-white/10 bg-cinema-900/70">
+                  <div className="relative aspect-[2/3] bg-cinema-800">
+                    {item.posterUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.posterUrl} alt={item.title} className="h-full w-full object-cover" />
+                    ) : null}
+                  </div>
+                  <div className="p-2.5">
+                    <p className="line-clamp-2 text-xs font-semibold text-white group-hover:text-cyan-300">{item.title}</p>
+                    <p className="mt-0.5 text-[11px] text-gray-500">
+                      {item.year ?? ""}
+                      {item.slug ? " · Đặt vé" : ""}
+                    </p>
+                  </div>
+                </article>
+              );
+              return item.slug ? (
+                <Link key={item.tmdbId} href={paths.movie(item.slug)}>
+                  {content}
+                </Link>
+              ) : (
+                <div key={item.tmdbId}>{content}</div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       <Dialog open={trailerOpen} onOpenChange={setTrailerOpen}>
         <DialogContent className="max-w-3xl overflow-hidden rounded-2xl border-white/10 p-0">

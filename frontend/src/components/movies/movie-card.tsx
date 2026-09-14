@@ -3,7 +3,7 @@
 import { m } from "@/components/motion";
 import Image from "next/image";
 import Link from "next/link";
-import { Clock, Play, Ticket } from "lucide-react";
+import { Clock, Play, Star, Ticket } from "lucide-react";
 
 import type { Movie } from "@/@types/movie";
 import { AgeBadge } from "@/components/movies/age-badge";
@@ -32,8 +32,18 @@ export function MovieCard({ movie, priority = false }: { movie: Movie; priority?
           />
           <div className="absolute inset-0 bg-gradient-to-t from-cinema-950 via-transparent to-black/40 opacity-80 transition-opacity group-hover:opacity-90" />
           <AgeBadge rating={movie.rating} className="absolute right-3 top-3 z-10" />
-          {!movie.nowShowing ? (
+          {typeof movie.imdbRating === "number" ? (
+            <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-lg bg-black/70 px-2 py-0.5 text-[11px] font-semibold text-amber-300 backdrop-blur-md">
+              <Star className="h-3 w-3 fill-current" />
+              {movie.imdbRating.toFixed(1)}
+            </span>
+          ) : !movie.nowShowing ? (
             <span className="absolute left-3 top-3 z-10 rounded-full bg-gradient-to-r from-amber-400 to-amber-600 px-2 py-0.5 text-[10px] font-bold text-black shadow-lg shadow-amber-500/25">
+              Sắp chiếu
+            </span>
+          ) : null}
+          {!movie.nowShowing && typeof movie.imdbRating === "number" ? (
+            <span className="absolute left-3 top-11 z-10 rounded-full bg-gradient-to-r from-amber-400 to-amber-600 px-2 py-0.5 text-[10px] font-bold text-black shadow-lg shadow-amber-500/25">
               Sắp chiếu
             </span>
           ) : null}

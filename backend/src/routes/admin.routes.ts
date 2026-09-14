@@ -11,6 +11,10 @@ adminRouter.get("/overview", adminController.overview);
 adminRouter.get("/reports/revenue", adminController.revenue);
 
 adminRouter.get("/movies", adminController.listMovies);
+adminRouter.get("/catalog/search", adminController.searchCatalog);
+adminRouter.post("/movies/import", adminController.importMovie);
+adminRouter.post("/movies/sync-now-playing", adminController.syncNowPlaying);
+adminRouter.post("/movies/:id/enrich", adminController.enrichMovie);
 adminRouter.post("/movies", adminController.createMovie);
 adminRouter.patch("/movies/:id", adminController.updateMovie);
 adminRouter.delete("/movies/:id", adminController.deleteMovie);

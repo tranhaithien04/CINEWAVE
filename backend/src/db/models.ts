@@ -30,6 +30,13 @@ const movieSchema = new Schema<MovieRecord>(
     genres: { type: [String], default: [] },
     nowShowing: { type: Boolean, default: true },
     trailerUrl: { type: String },
+    imdbId: { type: String, unique: true, sparse: true, index: true },
+    tmdbId: { type: Number, unique: true, sparse: true, index: true },
+    imdbRating: { type: Number },
+    imdbVotes: { type: Number },
+    year: { type: String },
+    director: { type: String },
+    actors: { type: String },
   },
   { versionKey: false },
 );
