@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { m } from "@/components/motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -7,12 +8,14 @@ import { Clock, Play, Star, Ticket } from "lucide-react";
 
 import type { Movie } from "@/@types/movie";
 import { AgeBadge } from "@/components/movies/age-badge";
+import { QuickBookDialog } from "@/components/movies/quick-book-dialog";
 import { Button } from "@/components/ui/button";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { paths } from "@/routes/paths";
 
 export function MovieCard({ movie, priority = false }: { movie: Movie; priority?: boolean }) {
   const reduced = usePrefersReducedMotion();
+  const [bookOpen, setBookOpen] = useState(false);
 
   return (
     <m.div
@@ -65,15 +68,15 @@ export function MovieCard({ movie, priority = false }: { movie: Movie; priority?
             <p className="mb-4 line-clamp-2 text-xs leading-relaxed text-gray-400">{movie.description}</p>
           </div>
           <div className="border-t border-white/5 pt-2">
-            <Button asChild size="sm" className="w-full">
-              <Link href={paths.movie(movie.slug)}>
-                <Ticket className="h-4 w-4" />
-                Đặt vé ngay
-              </Link>
+            <Button type="button" size="sm" className="w-full" onClick={() => setBookOpen(true)}>
+              <Ticket className="h-4 w-4" />
+              Đặt vé ngay
             </Button>
           </div>
         </div>
       </article>
+
+      <QuickBookDialog movie={movie} open={bookOpen} onOpenChange={setBookOpen} />
     </m.div>
   );
 }

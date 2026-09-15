@@ -76,3 +76,9 @@ export async function saveBooking(booking: BookingRecord) {
   }).lean();
   return toPlain<BookingRecord>(doc)!;
 }
+
+export async function deleteBookingsByShowtimeIds(showtimeIds: string[]) {
+  if (!showtimeIds.length) return 0;
+  const result = await BookingModel.deleteMany({ showtimeId: { $in: showtimeIds } });
+  return result.deletedCount ?? 0;
+}

@@ -178,40 +178,48 @@ function vietnamIso(offsetDays: number, hhmm: string) {
   return `${y}-${pad2(m)}-${pad2(d)}T${hhmm}:00+07:00`;
 }
 
+const UPCOMING_MIN_MS = 15 * 60 * 1000;
+
+const weeklySlotTemplates = [
+  { time: "18:30", priceBase: 120000, room: "IMAX 1" },
+  { time: "21:00", priceBase: 140000, room: "IMAX 1" },
+];
+
+function buildUpcomingShowtimeDocs(movieSlug: string, existingStarts: Set<string>) {
+  const docs: ShowtimeRecord[] = [];
+  for (let day = 0; day < 7; day += 1) {
+    for (const template of weeklySlotTemplates) {
+      const startsAt = vietnamIso(day, template.time);
+      if (new Date(startsAt).getTime() <= Date.now() + UPCOMING_MIN_MS) continue;
+      if (existingStarts.has(startsAt)) continue;
+      existingStarts.add(startsAt);
+      docs.push({
+        id: `st-${randomUUID().slice(0, 8)}`,
+        movieSlug,
+        cinema: "CINEWAVE Landmark 81",
+        room: template.room,
+        startsAt,
+        priceBase: template.priceBase,
+        closed: false,
+        blockedSeats: [],
+      });
+    }
+  }
+  return docs;
+}
+
+export async function ensureShowtimesForNextWeek(movieSlug: string) {
+  const existing = await listShowtimesByMovieSlug(movieSlug);
+  const existingStarts = new Set(existing.map((item) => item.startsAt));
+  const docs = buildUpcomingShowtimeDocs(movieSlug, existingStarts);
+  if (docs.length) await ShowtimeModel.insertMany(docs);
+  return docs;
+}
+
 export async function ensureSampleShowtimes(movieSlug: string) {
   const existing = await listShowtimesByMovieSlug(movieSlug);
   if (existing.length) return existing;
-
-  const templates = [
-    { days: 0, time: "18:30", priceBase: 120000, room: "IMAX 1" },
-    { days: 0, time: "21:00", priceBase: 140000, room: "IMAX 1" },
-    { days: 1, time: "19:00", priceBase: 120000, room: "IMAX 1" },
-  ];
-
-  let slots = templates
-    .map((item) => ({
-      ...item,
-      startsAt: vietnamIso(item.days, item.time),
-    }))
-    .filter((item) => new Date(item.startsAt).getTime() > Date.now() + 15 * 60 * 1000);
-
-  if (!slots.length) {
-    slots = [{ days: 1, time: "19:00", priceBase: 120000, room: "IMAX 1", startsAt: vietnamIso(1, "19:00") }];
-  }
-
-  const docs: ShowtimeRecord[] = slots.map((slot) => ({
-    id: `st-${randomUUID().slice(0, 8)}`,
-    movieSlug,
-    cinema: "CINEWAVE Landmark 81",
-    room: slot.room,
-    startsAt: slot.startsAt,
-    priceBase: slot.priceBase,
-    closed: false,
-    blockedSeats: [],
-  }));
-
-  await ShowtimeModel.insertMany(docs);
-  return docs;
+  return ensureShowtimesForNextWeek(movieSlug);
 }
 
 export async function ensureSampleShowtimesForNowShowing() {
@@ -236,4 +244,10 @@ export async function ensureSampleShowtimesForNowShowing() {
 export async function removeShowtime(id: string) {
   const result = await ShowtimeModel.deleteOne({ id });
   return result.deletedCount > 0;
+}
+
+export async function removeShowtimesByIds(ids: string[]) {
+  if (!ids.length) return 0;
+  const result = await ShowtimeModel.deleteMany({ id: { $in: ids } });
+  return result.deletedCount ?? 0;
 }

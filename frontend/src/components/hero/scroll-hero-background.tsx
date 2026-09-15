@@ -236,9 +236,9 @@ export function ScrollHeroBackground({ containerRef }: ScrollHeroBackgroundProps
       />
 
       {/* Cinematic Vignette Overlays for Text Contrast */}
-      <div className="absolute inset-0 bg-gradient-to-r from-[#06070d]/80 via-[#06070d]/30 to-transparent pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#06070d] via-transparent to-[#06070d]/40 pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(6,7,13,0)_0%,_rgba(6,7,13,0.75)_100%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#06070d]/70 via-[#06070d]/22 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#06070d]/70 via-transparent to-[#06070d]/12 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(6,7,13,0)_0%,_rgba(6,7,13,0.4)_100%)] pointer-events-none" />
     </div>
   );
 }

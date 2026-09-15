@@ -1,9 +1,9 @@
 "use client";
 
-import { Film } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { BrandMark } from "@/components/brand/brand-mark";
 import { AdminNavLink } from "@/components/layout/admin-nav-link";
 import { AuthNav } from "@/components/layout/auth-nav";
 import { MobileNav } from "@/components/layout/mobile-nav";
@@ -33,25 +33,11 @@ export function SiteHeader() {
   const pathname = usePathname() || "/";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0c16]/72 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-transparent bg-[#0a0c16]/70 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-2 md:gap-6">
           <MobileNav />
-          <Link
-            href={paths.home}
-            className="group flex items-center gap-2 font-display text-lg font-bold tracking-tight text-white transition-[color,transform] duration-200 hover:text-cyan-300"
-          >
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-500/10 shadow-neon transition-[background-color,box-shadow,transform] duration-200 group-hover:scale-105 group-hover:bg-cyan-500/20 group-hover:shadow-[0_0_16px_rgba(34,211,238,0.35)]">
-              <Film className="h-4 w-4 text-cyan-400 transition-colors duration-200 group-hover:text-cyan-300" strokeWidth={1.75} />
-            </span>
-            <span className="relative">
-              CINEWAVE
-              <span
-                aria-hidden
-                className="absolute inset-x-0 -bottom-0.5 h-px origin-left scale-x-0 bg-gradient-to-r from-cyan-400 to-transparent transition-transform duration-200 group-hover:scale-x-100"
-              />
-            </span>
-          </Link>
+          <BrandMark size="md" className="[&_.brand-word-underline]:hidden" />
           <nav className="hidden items-center gap-1 md:flex">
             {links.map((link) => {
               const active = navActive(pathname, link.href);
@@ -75,6 +61,11 @@ export function SiteHeader() {
           <AuthNav />
         </div>
       </div>
+      {/* Soft veil so content dissolves under the header instead of a hard cut */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-full h-10 bg-gradient-to-b from-[#0a0c16]/85 via-[#0a0c16]/35 to-transparent"
+      />
     </header>
   );
 }

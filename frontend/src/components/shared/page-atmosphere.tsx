@@ -35,7 +35,7 @@ function FilmRail({ side }: { side: "left" | "right" }) {
 export function PageAtmosphere() {
   const pathname = usePathname() || "/";
   const reduced = usePrefersReducedMotion();
-  if (pathname === "/") return null;
+  if (pathname === "/" || pathname.startsWith("/movies/")) return null;
 
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden>

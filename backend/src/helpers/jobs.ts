@@ -1,8 +1,12 @@
 import { getMovieBySlug, getShowtimeById } from "./catalog-store.js";
 import { listBookings } from "./booking-store.js";
 import { notifyUser } from "../services/notification.service.js";
+import { runCatalogMaintenance } from "../services/catalog-maintenance.service.js";
 import { expireStalePayments } from "../services/payment.service.js";
 import { purgeCccdTmp } from "../services/age-verification.service.js";
+
+const CATALOG_MAINTENANCE_MS = 15 * 60 * 1000;
+let lastCatalogMaintenanceAt = 0;
 
 const HOLD_WARN_MS = 2 * 60 * 1000;
 const SHOWTIME_REMIND_MS = 60 * 60 * 1000;
@@ -59,6 +63,13 @@ export async function remindUpcomingShowtimes() {
   }
 }
 
+function maybeCatalogMaintenance() {
+  const now = Date.now();
+  if (now - lastCatalogMaintenanceAt < CATALOG_MAINTENANCE_MS) return;
+  lastCatalogMaintenanceAt = now;
+  void runCatalogMaintenance();
+}
+
 export function startBackgroundJobs() {
   const tick = () => {
     void warnHoldExpiring();
@@ -66,6 +77,7 @@ export function startBackgroundJobs() {
     void expireHolds();
     void expirePayments();
     void purgeCccdTmp();
+    maybeCatalogMaintenance();
   };
   tick();
   return setInterval(tick, 30_000);

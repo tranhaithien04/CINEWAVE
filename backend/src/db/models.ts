@@ -120,8 +120,17 @@ const notificationSchema = new Schema<NotificationRecord>(
 notificationSchema.index({ userId: 1, createdAt: -1 });
 notificationSchema.index({ userId: 1, type: 1, bookingId: 1 });
 
+const appMetaSchema = new Schema<{ key: string; value: string }>(
+  {
+    key: { type: String, required: true, unique: true, index: true },
+    value: { type: String, required: true },
+  },
+  { versionKey: false },
+);
+
 export const UserModel = model("User", userSchema);
 export const MovieModel = model("Movie", movieSchema);
 export const ShowtimeModel = model("Showtime", showtimeSchema);
 export const BookingModel = model("Booking", bookingSchema);
 export const NotificationModel = model("Notification", notificationSchema);
+export const AppMetaModel = model("AppMeta", appMetaSchema);

@@ -1,6 +1,7 @@
-import { Film, ShieldCheck, Sparkles } from "lucide-react";
+import { ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 
+import { BrandMark } from "@/components/brand/brand-mark";
 import { paths } from "@/routes/paths";
 
 export function SiteFooter() {
@@ -10,15 +11,7 @@ export function SiteFooter() {
         <div className="grid gap-8 md:grid-cols-[1.4fr_1fr_1fr]">
           {/* Brand & Mission */}
           <div className="space-y-3">
-            <Link
-              href={paths.home}
-              className="inline-flex items-center gap-2 font-display text-lg font-black tracking-tight text-white"
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-500/10 shadow-neon">
-                <Film className="h-4 w-4 text-cyan-400" strokeWidth={1.75} />
-              </span>
-              CINEWAVE
-            </Link>
+            <BrandMark size="md" />
             <p className="max-w-sm text-xs leading-relaxed text-gray-400">
               Nền tảng đặt vé điện ảnh không gian 3D tương lai. Tích hợp công nghệ giữ ghế realtime, phòng chiếu IMAX Laser và kiểm soát độ tuổi tự động bằng thị giác máy tính AI (YOLO + OCR).
             </p>

@@ -4,6 +4,7 @@ import { Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { BrandMark } from "@/components/brand/brand-mark";
 import { openCommandPalette } from "@/components/layout/command-palette";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -36,7 +37,8 @@ export function MobileNav() {
       </SheetTrigger>
       <SheetContent side="left" className="rounded-none">
         <SheetHeader>
-          <SheetTitle>CINEWAVE</SheetTitle>
+          <SheetTitle className="sr-only">CINEWAVE</SheetTitle>
+          <BrandMark size="lg" />
         </SheetHeader>
         <div className="mt-6 flex flex-col gap-2">
           <Button variant="ghost" className="justify-start" onClick={openCommandPalette}>
