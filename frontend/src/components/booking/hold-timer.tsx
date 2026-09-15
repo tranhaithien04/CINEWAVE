@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Clock } from "lucide-react";
 
 import { formatHoldCountdown } from "@/hooks/use-hold-countdown";
@@ -9,21 +9,27 @@ import { cn } from "@/utils/cn";
 export function HoldTimer({ expiresAt, onExpire }: { expiresAt: Date; onExpire?: () => void }) {
   const [label, setLabel] = useState(() => formatHoldCountdown(expiresAt));
   const expired = label === "00:00";
+  const onExpireRef = useRef(onExpire);
+  const firedForExpiresAt = useRef<number | null>(null);
 
   useEffect(() => {
-    let expiredOnce = false;
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
+
+  useEffect(() => {
+    const expiresAtMs = expiresAt.getTime();
     const tick = () => {
       const next = formatHoldCountdown(expiresAt);
       setLabel(next);
-      if (next === "00:00" && !expiredOnce) {
-        expiredOnce = true;
-        onExpire?.();
+      if (next === "00:00" && firedForExpiresAt.current !== expiresAtMs) {
+        firedForExpiresAt.current = expiresAtMs;
+        onExpireRef.current?.();
       }
     };
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, [expiresAt, onExpire]);
+  }, [expiresAt]);
 
   return (
     <div

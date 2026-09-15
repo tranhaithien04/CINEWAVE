@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Box, LayoutGrid } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -23,6 +23,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCatalog } from "@/hooks/use-catalog";
 import { paths } from "@/routes/paths";
 import { couplePartner, isSeatTaken, MAX_SEATS_PER_BOOKING } from "@/utils/seat";
+
+const HOLD_MS = 4.5 * 60 * 1000;
 
 const SeatMap3D = dynamic(
   () => import("@/components/seats/seat-map-3d").then((mod) => mod.SeatMap3D),
@@ -55,8 +57,15 @@ export function SeatMapPage({ showtimeId, changeTicket }: { showtimeId: string; 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [view, setView] = useState<"3d" | "2d">("3d");
   const [holding, setHolding] = useState(false);
-  const [holdUntil] = useState(() => new Date(Date.now() + 4.5 * 60 * 1000));
+  const [holdUntil, setHoldUntil] = useState(() => new Date(Date.now() + HOLD_MS));
+  const [holdExpired, setHoldExpired] = useState(false);
   const changing = Boolean(changeTicket);
+
+  const handleHoldExpire = useCallback(() => {
+    setHoldExpired(true);
+    setSelectedIds([]);
+    toast.error("Hết thời gian giữ ghế. Chọn lại giúp bạn.");
+  }, []);
 
   useEffect(() => {
     if (catalogShow) {
@@ -105,8 +114,15 @@ export function SeatMapPage({ showtimeId, changeTicket }: { showtimeId: string; 
     return seats.filter((seat) => selected.has(seat.id));
   }, [seats, selectedIds]);
 
+  function beginFreshHoldWindow() {
+    if (!holdExpired) return;
+    setHoldExpired(false);
+    setHoldUntil(new Date(Date.now() + HOLD_MS));
+  }
+
   function toggle(seat: Seat) {
     if (isSeatTaken(seat)) return;
+    beginFreshHoldWindow();
 
     const partner = couplePartner(seats, seat);
     const bundle = partner ? [seat, partner] : [seat];
@@ -177,10 +193,7 @@ export function SeatMapPage({ showtimeId, changeTicket }: { showtimeId: string; 
             {changing ? " · Đổi suất cùng giá, tổng ghế phải bằng vé cũ." : null}
           </p>
           {changing ? null : (
-            <HoldTimer
-              expiresAt={holdUntil}
-              onExpire={() => toast.error("Hết thời gian giữ ghế. Chọn lại giúp bạn.")}
-            />
+            <HoldTimer expiresAt={holdUntil} onExpire={handleHoldExpire} />
           )}
         </div>
         <div className="flex rounded-xl border border-white/10 bg-cinema-900/70 p-1 backdrop-blur-md">

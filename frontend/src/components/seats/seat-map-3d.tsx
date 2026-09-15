@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, RotateCcw, Scan } from "lucide-react";
 import { toast } from "sonner";
 
@@ -14,6 +14,7 @@ import {
   setSelectedSeats,
   setTopDownView,
   tickSeatPicker,
+  updateSeatStates,
   viewFromSeat,
   zoomSeatPicker,
   type CameraMode,
@@ -36,6 +37,10 @@ function typeLabel(type: Seat["type"]) {
   return "Thường";
 }
 
+function seatLayoutKey(seats: Seat[]) {
+  return seats.map((seat) => `${seat.id}:${seat.row}:${seat.number}:${seat.type}`).join("|");
+}
+
 export function SeatMap3D({
   seats,
   selectedIds,
@@ -50,22 +55,30 @@ export function SeatMap3D({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pickerRef = useRef<SeatPickerScene | null>(null);
   const selectedRef = useRef(selectedIds);
+  const seatsRef = useRef(seats);
   const dragRef = useRef({ active: false, moved: false, x: 0, y: 0 });
   const [tip, setTip] = useState<{ x: number; y: number; seat: Seat } | null>(null);
   const [mode, setMode] = useState<CameraMode>("orbit");
   const [viewingLabel, setViewingLabel] = useState<string | null>(null);
+  const layoutKey = useMemo(() => seatLayoutKey(seats), [seats]);
 
   useEffect(() => {
     selectedRef.current = selectedIds;
   }, [selectedIds]);
 
   useEffect(() => {
+    seatsRef.current = seats;
+  }, [seats]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const picker = createSeatPickerScene(canvas, seats);
+    const picker = createSeatPickerScene(canvas, seatsRef.current);
     pickerRef.current = picker;
     setSelectedSeats(picker, selectedRef.current);
+    setMode("orbit");
+    setViewingLabel(null);
 
     const parent = canvas.parentElement;
     const resize = () => {
@@ -96,6 +109,11 @@ export function SeatMap3D({
       picker.dispose();
       pickerRef.current = null;
     };
+  }, [layoutKey]);
+
+  useEffect(() => {
+    const picker = pickerRef.current;
+    if (picker) updateSeatStates(picker, seats);
   }, [seats]);
 
   useEffect(() => {
@@ -135,6 +153,14 @@ export function SeatMap3D({
       setViewingLabel(seatLabel(target));
       toast.message(`Góc nhìn từ ghế ${seatLabel(target)}`);
     }
+  }
+
+  function toggleSeatView() {
+    if (mode === "seat") {
+      goOverview();
+      return;
+    }
+    goSeatView();
   }
 
   function updateHover(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -224,7 +250,7 @@ export function SeatMap3D({
         <p className="rounded-full bg-background/75 px-3 py-1 text-[11px] text-muted-foreground backdrop-blur">
           {mode === "seat"
             ? `Đang ngồi ${viewingLabel ?? "ghế"} · nhìn ra màn hình`
-            : "Kéo xoay · lăn zoom · double-click xem góc ghế"}
+            : "Kéo xoay · lăn zoom · double-click / Góc ghế · bấm lại để thoát"}
         </p>
       </div>
 
@@ -242,7 +268,8 @@ export function SeatMap3D({
           size="sm"
           variant={mode === "seat" ? "default" : "ghost"}
           className={cn("h-8 rounded-lg px-2")}
-          onClick={() => goSeatView()}
+          aria-pressed={mode === "seat"}
+          onClick={toggleSeatView}
         >
           <Eye className="mr-1 h-3.5 w-3.5" />
           Góc ghế

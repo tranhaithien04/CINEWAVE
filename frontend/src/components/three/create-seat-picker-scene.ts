@@ -595,6 +595,15 @@ export function setSelectedSeats(picker: SeatPickerScene, selectedIds: string[])
   paint(picker);
 }
 
+/** Refresh seat availability/type without recreating the WebGL scene (keeps camera mode). */
+export function updateSeatStates(picker: SeatPickerScene, seats: Seat[]) {
+  for (const seat of seats) {
+    const visual = picker.visuals.get(seat.id);
+    if (visual) visual.seat = seat;
+  }
+  paint(picker);
+}
+
 export function pickSeatId(picker: SeatPickerScene, clientX: number, clientY: number) {
   const rect = picker.renderer.domElement.getBoundingClientRect();
   picker.pointer.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
