@@ -41,6 +41,32 @@ function formatTime(iso: string) {
   return showTimeFmt.format(new Date(iso));
 }
 
+function ExpandableDescription({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const longEnough = text.trim().length > 180;
+
+  useEffect(() => {
+    setExpanded(false);
+  }, [text]);
+
+  if (!text) return null;
+
+  return (
+    <div className="max-w-2xl space-y-1.5">
+      <p className={cn("text-muted-foreground", !expanded && longEnough && "line-clamp-3")}>{text}</p>
+      {longEnough ? (
+        <button
+          type="button"
+          className="text-sm font-medium text-cyan-300 transition-colors hover:text-cyan-200"
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? "Thu gọn" : "Xem thêm"}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export function MovieDetailPage({ slug }: { slug: string }) {
   const { getMovieBySlug, getShowtimesByMovie, loading } = useCatalog();
   const movie = getMovieBySlug(slug);
@@ -162,7 +188,7 @@ export function MovieDetailPage({ slug }: { slug: string }) {
                 </span>
               </p>
             ) : null}
-            <p className="max-w-2xl text-muted-foreground">{movie.description}</p>
+            <ExpandableDescription text={movie.description} />
             <Button
               type="button"
               variant="outline"
