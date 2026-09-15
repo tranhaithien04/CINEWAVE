@@ -75,18 +75,24 @@ async function loadImageFile(file: File): Promise<{ source: CanvasImageSource; w
     const bitmap = await createImageBitmap(file);
     return { source: bitmap, width: bitmap.width, height: bitmap.height, close: () => bitmap.close() };
   } catch {
-    const url = URL.createObjectURL(file);
-    try {
-      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const el = new Image();
-        el.onload = () => resolve(el);
-        el.onerror = () => reject(new Error("image"));
-        el.src = url;
-      });
-      return { source: img, width: img.naturalWidth, height: img.naturalHeight };
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+    // Avoid createObjectURL so Blob lifetime stays tied to the FileReader/data URL path.
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(new Error("image"));
+      reader.readAsDataURL(file);
+    });
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("image"));
+      el.src = dataUrl;
+    });
+    return {
+      source: img,
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+    };
   }
 }
 
@@ -107,8 +113,7 @@ export async function decodeQrFromFile(file: File) {
     }
   }
 
-  const fn = await loadJsQr();
-  const loaded = await loadImageFile(file);
+  const [fn, loaded] = await Promise.all([loadJsQr(), loadImageFile(file)]);
   try {
     return decodeFromSource(fn, loaded.source, loaded.width, loaded.height);
   } finally {

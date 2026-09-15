@@ -243,6 +243,7 @@ export function AdminMoviesPage() {
             <div>
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nhãn tuổi VN</Label>
               <select
+                aria-label="Nhãn tuổi VN"
                 className="mt-1.5 flex h-10 rounded-xl border border-white/10 bg-zinc-900 px-3 text-sm text-white"
                 value={importRating}
                 onChange={(event) => setImportRating(event.target.value as AgeRating)}

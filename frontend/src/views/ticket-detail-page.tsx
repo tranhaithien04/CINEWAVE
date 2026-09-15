@@ -15,6 +15,7 @@ import { formatVnd, getTicketByCode } from "@/data/mock-catalog";
 import { useAuth } from "@/hooks/use-auth";
 import { useCatalog } from "@/hooks/use-catalog";
 import { paths } from "@/routes/paths";
+import { formatDateOnly } from "@/utils/datetime";
 
 export function TicketDetailPage({ code }: { code: string }) {
   const { user, loading: authLoading } = useAuth();
@@ -220,7 +221,7 @@ export function TicketDetailPage({ code }: { code: string }) {
                 <span className="text-center text-[10px] text-gray-400">
                   Mang ra quầy soát vé để nhận {formatVnd(ticket.total)}
                   {ticket.refundExpiresAt
-                    ? ` · Hạn ${new Date(ticket.refundExpiresAt).toLocaleDateString("vi-VN")}`
+                    ? ` · Hạn ${formatDateOnly(ticket.refundExpiresAt)}`
                     : ""}
                 </span>
               </>

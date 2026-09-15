@@ -14,12 +14,12 @@ import { formatVnd } from "@/data/mock-catalog";
 import { useAuth } from "@/hooks/use-auth";
 import { useCatalog } from "@/hooks/use-catalog";
 import { paths } from "@/routes/paths";
+import { formatDayLong, formatTime } from "@/utils/datetime";
 
 function formatShow(show: Showtime) {
-  const date = new Date(show.startsAt);
   return {
-    time: date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
-    day: date.toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" }),
+    time: formatTime(show.startsAt),
+    day: formatDayLong(show.startsAt),
   };
 }
 

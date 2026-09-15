@@ -16,6 +16,7 @@ import { formatVnd } from "@/data/mock-catalog";
 import { useAuth } from "@/hooks/use-auth";
 import { useCatalog } from "@/hooks/use-catalog";
 import { paths } from "@/routes/paths";
+import { formatTime } from "@/utils/datetime";
 
 export function GatePage({ code }: { code: string }) {
   const searchParams = useSearchParams();
@@ -120,9 +121,7 @@ export function GatePage({ code }: { code: string }) {
             <div>
               <dt className="text-muted-foreground">Check-in</dt>
               <dd className="text-gray-200">
-                {ticket.checkedInAt
-                  ? new Date(ticket.checkedInAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
-                  : "Chưa"}
+                {ticket.checkedInAt ? formatTime(ticket.checkedInAt) : "Chưa"}
               </dd>
             </div>
           </dl>

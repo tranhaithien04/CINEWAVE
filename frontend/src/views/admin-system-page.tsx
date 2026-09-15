@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatDateTime } from "@/utils/datetime";
 
 export function AdminSystemPage() {
   const [settings, setSettings] = useState<SystemSettingRow[]>([]);
@@ -250,13 +251,13 @@ export function AdminSystemPage() {
           {audit.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">Chưa có thay đổi.</p>
           ) : (
-            audit.map((item, index) => (
-              <div key={`${item.at}-${item.key}-${index}`} className="flex flex-wrap justify-between gap-2 py-3 text-sm">
+            audit.map((item) => (
+              <div key={`${item.at}-${item.key}-${item.adminEmail}-${item.action}`} className="flex flex-wrap justify-between gap-2 py-3 text-sm">
                 <p className="text-white">
                   <span className="font-mono text-cyan-300">{item.key}</span> · {item.action}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {item.adminEmail} · {new Date(item.at).toLocaleString("vi-VN")}
+                  {item.adminEmail} · {formatDateTime(item.at)}
                 </p>
               </div>
             ))

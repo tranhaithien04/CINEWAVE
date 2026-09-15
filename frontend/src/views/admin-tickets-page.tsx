@@ -96,6 +96,7 @@ export function AdminTicketsPage() {
             <div className="w-full sm:w-72">
               <input
                 type="text"
+                aria-label="Tìm mã vé"
                 placeholder="Nhập mã vé (VD: CW-...) để tìm…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}

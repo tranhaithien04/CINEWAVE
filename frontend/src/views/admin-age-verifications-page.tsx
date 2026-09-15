@@ -8,6 +8,7 @@ import { ApiError } from "@/api/client";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCatalog } from "@/hooks/use-catalog";
+import { formatDateTime } from "@/utils/datetime";
 
 export function AdminAgeVerificationsPage() {
   const { getMovieBySlug } = useCatalog();
@@ -50,6 +51,7 @@ export function AdminAgeVerificationsPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base font-semibold text-white">Nhật ký ({filtered.length})</CardTitle>
             <select
+              aria-label="Lọc trạng thái xác minh"
               className="h-9 rounded-xl border border-white/10 bg-zinc-900 px-3 text-xs text-white"
               value={filter}
               onChange={(e) => setFilter(e.target.value as typeof filter)}
@@ -75,7 +77,7 @@ export function AdminAgeVerificationsPage() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       Tuổi yêu cầu {row.requiredAge}+ · đọc được {row.computedAge ?? "—"} ·{" "}
                       {row.idMasked ? `CCCD ${row.idMasked}` : "không có số"} ·{" "}
-                      {new Date(row.createdAt).toLocaleString("vi-VN")}
+                      {formatDateTime(row.createdAt)}
                     </p>
                     {row.failureReason ? (
                       <p className="mt-1 text-xs text-rose-300">{row.failureReason}</p>

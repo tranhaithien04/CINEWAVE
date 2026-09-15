@@ -49,6 +49,7 @@ export function AgeGateModal({
   const [imageName, setImageName] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<AgeVerificationResult | null>(null);
+  const [acceptedPolicy, setAcceptedPolicy] = useState(false);
 
   // Laser scanning animation
   const scanAnim = useRef(new Animated.Value(0)).current;
@@ -73,6 +74,12 @@ export function AgeGateModal({
       scanAnim.stopAnimation();
     }
   }, [scanning, scanAnim]);
+
+  useEffect(() => {
+    if (!visible) {
+      setAcceptedPolicy(false);
+    }
+  }, [visible]);
 
   const reqAge = requiredAgeMap[rating];
 
@@ -119,6 +126,13 @@ export function AgeGateModal({
   const handleVerify = async () => {
     if (!imageUri) {
       Alert.alert('Chưa có ảnh', 'Vui lòng chọn hoặc chụp ảnh mặt trước CCCD.');
+      return;
+    }
+    if (!acceptedPolicy) {
+      Alert.alert(
+        'Chưa xác nhận điều khoản',
+        'Vui lòng tích xác nhận điều khoản xác minh tuổi trước khi tiếp tục.'
+      );
       return;
     }
 
@@ -170,6 +184,7 @@ export function AgeGateModal({
     setImageName(null);
     setResult(null);
     setScanning(false);
+    setAcceptedPolicy(false);
   };
 
   return (
@@ -260,6 +275,20 @@ export function AgeGateModal({
             </Text>
           </View>
 
+          <TouchableOpacity
+            style={styles.policyRow}
+            onPress={() => setAcceptedPolicy((prev) => !prev)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.checkbox, acceptedPolicy && styles.checkboxChecked]}>
+              {acceptedPolicy ? <Text style={styles.checkboxMark}>✓</Text> : null}
+            </View>
+            <Text style={styles.policyText}>
+              Tôi xác nhận CCCD thuộc về tôi, đủ tuổi theo phân loại phim, và chịu trách nhiệm nếu dùng
+              giấy tờ giả / của người khác. Tôi đồng ý với điều khoản xác minh tuổi của CINEWAVE.
+            </Text>
+          </TouchableOpacity>
+
           {/* Actions */}
           <View style={styles.actionsRow}>
             {!imageUri ? (
@@ -307,6 +336,7 @@ export function AgeGateModal({
                   variant="primary"
                   size="sm"
                   onPress={() => void handleVerify()}
+                  disabled={!acceptedPolicy}
                   style={{ flex: 1 }}
                 />
               </>
@@ -467,6 +497,44 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  policyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: 'rgba(6, 182, 212, 0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  checkboxMark: {
+    color: '#041016',
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 14,
+  },
+  policyText: {
+    flex: 1,
+    fontSize: 10,
+    lineHeight: 15,
+    color: colors.textSecondary,
   },
   actionsRow: {
     flexDirection: 'row',

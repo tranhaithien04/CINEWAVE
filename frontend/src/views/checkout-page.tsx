@@ -11,7 +11,8 @@ import type { Booking } from "@/api/bookings";
 import { fetchBooking, updateBookingConcessions } from "@/api/bookings";
 import { fetchConcessions, fetchShowtime, type ConcessionItem } from "@/api/catalog";
 import type { Showtime } from "@/@types/movie";
-import { AgeGateDialog, needsAgeGate } from "@/components/age-gate/age-gate-dialog";
+import { AgeGateDialog } from "@/components/age-gate/age-gate-dialog";
+import { needsAgeGate } from "@/components/age-gate/needs-age-gate";
 import { ConcessionPicker } from "@/components/booking/concession-picker";
 import { PriceBreakdown } from "@/components/booking/price-breakdown";
 import { AgeBadge } from "@/components/movies/age-badge";
@@ -25,6 +26,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCatalog } from "@/hooks/use-catalog";
 import { paths } from "@/routes/paths";
 import type { Seat } from "@/@types/seat";
+import { formatDayLong, formatTime } from "@/utils/datetime";
 
 type PayState = "idle" | "qr" | "paid";
 
@@ -419,8 +421,7 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
                   {showtime.cinema} · <span className="text-cyan-300 font-semibold">{showtime.room}</span>
                 </p>
                 <p className="text-xs text-gray-400">
-                  {showDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} ·{" "}
-                  {showDate.toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}
+                  {formatTime(showDate)} · {formatDayLong(showDate)}
                 </p>
               </div>
             </div>

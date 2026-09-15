@@ -81,8 +81,10 @@ export function TicketScanner({
         };
         void tick();
       } catch {
-        setError("Không mở được camera. Cho phép quyền camera, hoặc chọn ảnh QR.");
-        setActive(false);
+        if (!stopped) {
+          setError("Không mở được camera. Cho phép quyền camera, hoặc chọn ảnh QR.");
+          setActive(false);
+        }
       }
     }
 

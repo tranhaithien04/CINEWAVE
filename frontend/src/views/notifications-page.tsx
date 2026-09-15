@@ -9,15 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useNotifications } from "@/hooks/use-notifications";
 import { paths } from "@/routes/paths";
 import { cn } from "@/utils/cn";
-
-const notificationTimeFmt = new Intl.DateTimeFormat("vi-VN", {
-  dateStyle: "short",
-  timeStyle: "short",
-});
-
-function timeLabel(iso: string) {
-  return notificationTimeFmt.format(new Date(iso));
-}
+import { formatDateTime } from "@/utils/datetime";
 
 export function NotificationsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -91,7 +83,7 @@ export function NotificationsPage() {
               {!item.readAt ? <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-400" /> : null}
             </div>
             <p className="mt-2 text-[11px] text-gray-500">
-              {timeLabel(item.createdAt)}
+              {formatDateTime(item.createdAt)}
               {item.emailSentAt ? " · Đã gửi email" : ""}
             </p>
           </Link>

@@ -108,28 +108,37 @@ export function SeatMapPage({ showtimeId, changeTicket }: { showtimeId: string; 
   function toggle(seat: Seat) {
     if (isSeatTaken(seat)) return;
 
+    const partner = couplePartner(seats, seat);
+    const bundle = partner ? [seat, partner] : [seat];
+    const currentSet = new Set(selectedIds);
+
+    if (currentSet.has(seat.id)) {
+      const remove = new Set(bundle.map((item) => item.id));
+      setSelectedIds((current) => current.filter((id) => !remove.has(id)));
+      return;
+    }
+
+    if (partner && isSeatTaken(partner)) {
+      toast.error("Ghế đôi phải chọn cả cặp còn trống.");
+      return;
+    }
+
+    const addIds = bundle.map((item) => item.id).filter((id) => !currentSet.has(id));
+    if (selectedIds.length + addIds.length > MAX_SEATS_PER_BOOKING) {
+      toast.error(`Tối đa ${MAX_SEATS_PER_BOOKING} ghế mỗi lần đặt.`);
+      return;
+    }
+
     setSelectedIds((current) => {
-      const partner = couplePartner(seats, seat);
-      const bundle = partner ? [seat, partner] : [seat];
-      const currentSet = new Set(current);
-
-      if (currentSet.has(seat.id)) {
-        const remove = new Set(bundle.map((item) => item.id));
-        return current.filter((id) => !remove.has(id));
+      const seen = new Set(current);
+      const merged = [...current];
+      for (const id of addIds) {
+        if (!seen.has(id)) {
+          seen.add(id);
+          merged.push(id);
+        }
       }
-
-      if (partner && isSeatTaken(partner)) {
-        toast.error("Ghế đôi phải chọn cả cặp còn trống.");
-        return current;
-      }
-
-      const addIds = bundle.map((item) => item.id).filter((id) => !currentSet.has(id));
-      const next = [...current, ...addIds];
-      if (next.length > MAX_SEATS_PER_BOOKING) {
-        toast.error(`Tối đa ${MAX_SEATS_PER_BOOKING} ghế mỗi lần đặt.`);
-        return current;
-      }
-      return next;
+      return merged;
     });
   }
 

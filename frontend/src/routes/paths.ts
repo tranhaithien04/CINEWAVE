@@ -18,6 +18,7 @@ export const paths = {
   loginNext: (next: string) => `/login?next=${encodeURIComponent(next)}`,
   verifyEmail: "/verify-email",
   register: "/register",
+  legalAgeVerification: "/legal/age-verification",
   admin: "/admin",
   adminMovies: "/admin/movies",
   adminShowtimes: "/admin/showtimes",

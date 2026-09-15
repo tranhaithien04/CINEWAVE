@@ -3,14 +3,13 @@
 import { useRef, useState } from "react";
 import { m } from "@/components/motion";
 import { ArrowRight, ChevronDown, Clapperboard, ScanLine, ShieldCheck, Ticket } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 import { ScrollHeroBackground } from "@/components/hero/scroll-hero-background";
+import { FeaturedSpotlight } from "@/components/home/featured-spotlight";
 import { MovieCarousel } from "@/components/movies/movie-carousel";
 import { QuickBookDialog } from "@/components/movies/quick-book-dialog";
 import { SectionHeading } from "@/components/shared/section-heading";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Movie } from "@/@types/movie";
 import { useCatalog } from "@/hooks/use-catalog";
@@ -316,60 +315,7 @@ export function HomePage() {
             </m.div>
           </section>
 
-          {/* ---------------- SECTION 3: SPOTLIGHT FEATURED MOVIE ---------------- */}
-          {featured ? (
-            <section className="relative flex min-h-[100svh] flex-col items-center justify-center overflow-visible px-4 py-24">
-              <m.div
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: false, amount: 0.2 }}
-                transition={{ duration: 0.7, ease: "easeOut" }}
-                className="relative z-10 mx-auto w-full max-w-4xl"
-              >
-                <div className="group relative overflow-hidden rounded-3xl border border-cyan-500/30 bg-cinema-900/60 shadow-2xl shadow-cyan-500/20 backdrop-blur-xl transition-[border-color] duration-500 hover:border-cyan-400">
-                  <div className="relative aspect-[21/9] min-h-[320px] w-full">
-                    <Image
-                      src={featured.backdropUrl}
-                      alt={featured.title}
-                      fill
-                      priority
-                      sizes="(min-width: 1024px) 80vw, 100vw"
-                      className="object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-cinema-950 via-cinema-950/70 to-transparent" />
-                    <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end p-8 md:p-12">
-                      <Badge className="w-fit border-cyan-400/40 bg-cyan-950/80 text-cyan-300">
-                        ★ Phim Nổi Bật Tuần Này
-                      </Badge>
-                      <h2 className="mt-3 font-display text-3xl font-black text-white sm:text-5xl">
-                        {featured.title}
-                      </h2>
-                      <p className="mt-2 line-clamp-2 max-w-2xl text-sm text-gray-300 md:text-base">
-                        {featured.description}
-                      </p>
-                      <div className="mt-6 flex flex-wrap items-center gap-4">
-                        <Button
-                          type="button"
-                          size="lg"
-                          className="shadow-lg shadow-cyan-500/30"
-                          onClick={() => setBookOpen(true)}
-                        >
-                          <Ticket className="mr-2 h-4 w-4" />
-                          Đặt vé suất sớm
-                        </Button>
-                        <Link
-                          href={paths.movie(featured.slug)}
-                          className="text-sm font-semibold text-cyan-300 hover:underline"
-                        >
-                          Xem chi tiết phim →
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </m.div>
-            </section>
-          ) : null}
+          {featured ? <FeaturedSpotlight movie={featured} onBook={() => setBookOpen(true)} /> : null}
 
           {/* Compact cover: bury sticky edge without a huge empty void */}
           <div className="relative z-20 w-full" aria-hidden>

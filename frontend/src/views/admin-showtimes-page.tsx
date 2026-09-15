@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatVnd } from "@/data/mock-catalog";
 import { useCatalog } from "@/hooks/use-catalog";
+import { formatDayShort, formatTime } from "@/utils/datetime";
 
 function toLocal(iso: string) {
   const date = new Date(iso);
@@ -146,6 +147,7 @@ export function AdminShowtimesPage() {
             </CardTitle>
             <div className="w-full sm:w-64">
               <select
+                aria-label="Lọc theo phim"
                 className="h-9 w-full rounded-xl border border-white/10 bg-zinc-900 px-3 text-xs text-white focus:border-cyan-500"
                 value={selectedMovie}
                 onChange={(e) => setSelectedMovie(e.target.value)}
@@ -182,12 +184,8 @@ export function AdminShowtimesPage() {
                         {show.cinema} · {show.room}
                       </span>
                       <span>•</span>
-                      <span className="font-mono text-cyan-300">
-                        {date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                      <span>
-                        {date.toLocaleDateString("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit" })}
-                      </span>
+                      <span className="font-mono text-cyan-300">{formatTime(date)}</span>
+                      <span>{formatDayShort(date)}</span>
                       {blockedCount > 0 ? (
                         <>
                           <span>•</span>
@@ -255,6 +253,7 @@ export function AdminShowtimesPage() {
             <div className="grid gap-1.5">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Phim</Label>
               <select
+                aria-label="Chọn phim"
                 className="flex h-10 w-full rounded-xl border border-white/10 bg-zinc-900 px-3 text-sm text-white focus:border-cyan-500"
                 value={form.movieSlug}
                 onChange={(event) => setForm({ ...form, movieSlug: event.target.value })}

@@ -55,7 +55,9 @@ export function SeatMap3D({
   const [mode, setMode] = useState<CameraMode>("orbit");
   const [viewingLabel, setViewingLabel] = useState<string | null>(null);
 
-  selectedRef.current = selectedIds;
+  useEffect(() => {
+    selectedRef.current = selectedIds;
+  }, [selectedIds]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -182,12 +184,26 @@ export function SeatMap3D({
         onPointerUp={(event) => {
           const picker = pickerRef.current;
           const drag = dragRef.current;
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
           drag.active = false;
           if (canvasRef.current) canvasRef.current.style.cursor = "grab";
           if (!picker || drag.moved || picker.mode === "seat") return;
           const id = pickSeatId(picker, event.clientX, event.clientY);
           const seat = seatFromId(id);
           if (seat && !isSeatTaken(seat)) onToggle(seat);
+        }}
+        onPointerCancel={(event) => {
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
+          dragRef.current.active = false;
+          if (canvasRef.current) canvasRef.current.style.cursor = "grab";
+        }}
+        onLostPointerCapture={() => {
+          dragRef.current.active = false;
+          if (canvasRef.current) canvasRef.current.style.cursor = "grab";
         }}
         onDoubleClick={(event) => {
           const picker = pickerRef.current;
@@ -196,7 +212,7 @@ export function SeatMap3D({
           goSeatView(seatFromId(id));
         }}
         onPointerLeave={() => {
-          dragRef.current.active = false;
+          if (dragRef.current.active) return;
           const picker = pickerRef.current;
           if (picker) hoverSeat(picker, null);
           setTip(null);

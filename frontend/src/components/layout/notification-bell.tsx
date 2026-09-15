@@ -16,17 +16,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useNotifications } from "@/hooks/use-notifications";
 import { paths } from "@/routes/paths";
 import { cn } from "@/utils/cn";
-
-const notificationTimeFmt = new Intl.DateTimeFormat("vi-VN", {
-  day: "2-digit",
-  month: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-function timeLabel(iso: string) {
-  return notificationTimeFmt.format(new Date(iso));
-}
+import { formatDateTimeCompact } from "@/utils/datetime";
 
 export function NotificationBell() {
   const { user } = useAuth();
@@ -71,7 +61,7 @@ export function NotificationBell() {
                 <span className="min-w-0">
                   <span className="block truncate font-medium">{item.title}</span>
                   <span className="block truncate text-xs text-muted-foreground">{item.body}</span>
-                  <span className="mt-1 block text-[10px] text-gray-500">{timeLabel(item.createdAt)}</span>
+                  <span className="mt-1 block text-[10px] text-gray-500">{formatDateTimeCompact(item.createdAt)}</span>
                 </span>
               </Link>
             </DropdownMenuItem>

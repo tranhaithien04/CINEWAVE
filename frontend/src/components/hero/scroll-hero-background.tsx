@@ -26,10 +26,7 @@ export function ScrollHeroBackground({ containerRef }: ScrollHeroBackgroundProps
   const [failed, setFailed] = useState(false);
   const [firstFrameLoaded, setFirstFrameLoaded] = useState(false);
 
-  const imagesRef = useRef<(HTMLImageElement | null)[] | null>(null);
-  if (!imagesRef.current) {
-    imagesRef.current = new Array(TOTAL_FRAMES).fill(null);
-  }
+  const imagesRef = useRef<(HTMLImageElement | null)[]>([]);
   const targetProgressRef = useRef(0);
   const currentProgressRef = useRef(0);
   const isDestroyedRef = useRef(false);
@@ -38,6 +35,7 @@ export function ScrollHeroBackground({ containerRef }: ScrollHeroBackgroundProps
     if (reduced || failed || typeof window === "undefined") return;
     gsap.registerPlugin(ScrollTrigger);
 
+    imagesRef.current = new Array(TOTAL_FRAMES).fill(null);
     isDestroyedRef.current = false;
     let animFrameId: number | null = null;
     let scrollTriggerInstance: ScrollTrigger | null = null;
@@ -64,7 +62,6 @@ export function ScrollHeroBackground({ containerRef }: ScrollHeroBackgroundProps
     // Find nearest loaded frame if current frame is still fetching
     function getNearestLoadedImage(targetIdx: number): HTMLImageElement | null {
       const imgs = imagesRef.current;
-      if (!imgs) return null;
       if (imgs[targetIdx]?.complete) return imgs[targetIdx];
 
       for (let offset = 1; offset < 15; offset++) {
@@ -129,13 +126,13 @@ export function ScrollHeroBackground({ containerRef }: ScrollHeroBackgroundProps
     function preloadImage(idx: number): Promise<HTMLImageElement> {
       return new Promise((resolve) => {
         const imgs = imagesRef.current;
-        if (imgs?.[idx]) {
+        if (imgs[idx]) {
           return resolve(imgs[idx]!);
         }
         const img = new Image();
         img.src = getFrameUrl(idx);
         img.onload = () => {
-          if (!isDestroyedRef.current && imgs) {
+          if (!isDestroyedRef.current) {
             imgs[idx] = img;
           }
           resolve(img);
@@ -174,6 +171,7 @@ export function ScrollHeroBackground({ containerRef }: ScrollHeroBackgroundProps
     async function initializeEngine() {
       // 1. Load frame 0 immediately to display instantly
       await preloadImage(0);
+      if (isDestroyedRef.current) return;
       setFirstFrameLoaded(true);
       handleResize();
       render();
@@ -197,6 +195,7 @@ export function ScrollHeroBackground({ containerRef }: ScrollHeroBackgroundProps
         initialPromises.push(preloadImage(i));
       }
       await Promise.all(initialPromises);
+      if (isDestroyedRef.current) return;
       ScrollTrigger.refresh();
 
       // 4. Stream the remaining 100 frames in background

@@ -82,6 +82,7 @@ export function AdminBookingsPage() {
             <div className="w-full sm:w-64">
               <input
                 type="text"
+                aria-label="Tìm mã đơn hoặc email"
                 placeholder="Tìm mã đơn hoặc email…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}

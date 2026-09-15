@@ -44,6 +44,7 @@ export function ConcessionPicker({
                     variant="outline"
                     className="h-7 w-7 rounded-lg"
                     disabled={disabled || count <= 0}
+                    aria-label={`Giảm ${item.name}`}
                     onClick={() => onChange(item.id, count - 1)}
                   >
                     <Minus className="h-3 w-3" />
@@ -55,6 +56,7 @@ export function ConcessionPicker({
                     variant="outline"
                     className="h-7 w-7 rounded-lg"
                     disabled={disabled || count >= 8}
+                    aria-label={`Tăng ${item.name}`}
                     onClick={() => onChange(item.id, count + 1)}
                   >
                     <Plus className="h-3 w-3" />

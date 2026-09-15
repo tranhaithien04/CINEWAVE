@@ -1,13 +1,17 @@
 "use client";
 
 import { CheckCircle2, Loader2, Lock, ShieldCheck, XCircle } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import type { AgeRating } from "@/@types/movie";
 import { submitAgeVerification, type CccdQrFields } from "@/api/age-verification";
+import { requiredAgeByRating } from "@/components/age-gate/needs-age-gate";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
+import { paths } from "@/routes/paths";
 import {
   Dialog,
   DialogContent,
@@ -16,18 +20,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-const requiredAge: Record<AgeRating, number | null> = {
-  P: null,
-  K: null,
-  T13: 13,
-  T16: 16,
-  T18: 18,
-};
-
-export function needsAgeGate(rating: AgeRating) {
-  return requiredAge[rating] !== null;
-}
 
 type GateStep = "idle" | "preview" | "scanning" | "success" | "fail";
 
@@ -109,7 +101,8 @@ export function AgeGateDialog({
   const [qr, setQr] = useState<CccdQrFields | null>(null);
   const [computedAge, setComputedAge] = useState<number | null>(null);
   const [failMessage, setFailMessage] = useState<string | null>(null);
-  const age = requiredAge[rating];
+  const [acceptedPolicy, setAcceptedPolicy] = useState(false);
+  const age = requiredAgeByRating[rating];
 
   useEffect(() => {
     if (!previewFile) {
@@ -129,6 +122,7 @@ export function AgeGateDialog({
     setQr(null);
     setComputedAge(null);
     setFailMessage(null);
+    setAcceptedPolicy(false);
     setStep("idle");
   }
 
@@ -142,6 +136,10 @@ export function AgeGateDialog({
     const file = previewFile;
     if (!file) {
       toast.error("Vui lòng chọn ảnh CCCD");
+      return;
+    }
+    if (!acceptedPolicy) {
+      toast.error("Vui lòng xác nhận điều khoản xác minh tuổi trước khi tiếp tục");
       return;
     }
     if (!user) {
@@ -264,6 +262,32 @@ export function AgeGateDialog({
                 Ảnh chỉ dùng xử lý OCR tạm thời trong bộ nhớ và bị xóa tự động.
               </p>
             </label>
+
+            <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+              <div className="flex gap-3">
+                <input
+                  id="age-gate-policy"
+                  type="checkbox"
+                  checked={acceptedPolicy}
+                  onChange={(event) => setAcceptedPolicy(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-white/30 bg-black/50 accent-cyan-400"
+                />
+                <Label htmlFor="age-gate-policy" className="cursor-pointer text-xs font-normal leading-relaxed text-gray-300">
+                  Tôi xác nhận CCCD thuộc về tôi, đủ tuổi theo phân loại phim, và chịu trách nhiệm nếu cung cấp
+                  giấy tờ giả / của người khác. Tôi đồng ý với{" "}
+                  <Link
+                    href={paths.legalAgeVerification}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-cyan-300 underline-offset-2 hover:underline"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    điều khoản xác minh tuổi
+                  </Link>
+                  .
+                </Label>
+              </div>
+            </div>
           </div>
         ) : null}
 
@@ -272,7 +296,7 @@ export function AgeGateDialog({
             Quay lại
           </Button>
           {step === "preview" ? (
-            <Button onClick={() => void scan()} className="rounded-xl">
+            <Button onClick={() => void scan()} disabled={!acceptedPolicy} className="rounded-xl">
               Nhận diện
             </Button>
           ) : null}
