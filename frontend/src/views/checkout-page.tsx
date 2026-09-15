@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { confirmPayment, createPaymentIntent, fetchPaymentStatus, type PaymentInfo } from "@/api/payments";
 import type { Booking } from "@/api/bookings";
 import { fetchBooking, updateBookingConcessions } from "@/api/bookings";
-import { fetchConcessions, fetchShowtime, type ConcessionItem } from "@/api/catalog";
+import { fetchConcessions, fetchShowtime, fetchShowtimeSeats, type ConcessionItem } from "@/api/catalog";
 import type { Showtime } from "@/@types/movie";
 import { AgeGateDialog } from "@/components/age-gate/age-gate-dialog";
 import { needsAgeGate } from "@/components/age-gate/needs-age-gate";
@@ -30,12 +30,6 @@ import { formatDayLong, formatTime } from "@/utils/datetime";
 
 type PayState = "idle" | "qr" | "paid";
 
-function seatTypeFromLabel(label: string): Seat["type"] {
-  if (label.startsWith("F")) return "VIP";
-  if (label === "A5" || label === "A6") return "COUPLE";
-  return "STANDARD";
-}
-
 export function CheckoutPage({ bookingId }: { bookingId: string }) {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -55,6 +49,7 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
   const [comboQty, setComboQty] = useState<Record<string, number>>({});
   const [savingCombo, setSavingCombo] = useState(false);
   const [fetchedShow, setFetchedShow] = useState<Showtime | null>(null);
+  const [seatTypeMap, setSeatTypeMap] = useState<Record<string, Seat["type"]>>({});
 
   useEffect(() => {
     if (timeLeft <= 0) return;
@@ -153,6 +148,27 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
   }, [authLoading, bookingId, user]);
 
   useEffect(() => {
+    const showtimeId = booking?.showtimeId;
+    if (!showtimeId) return;
+    let cancelled = false;
+    void fetchShowtimeSeats(showtimeId)
+      .then((data) => {
+        if (cancelled) return;
+        const map: Record<string, Seat["type"]> = {};
+        for (const seat of data.seats ?? []) {
+          map[`${seat.row}${seat.number}`] = seat.type;
+        }
+        setSeatTypeMap(map);
+      })
+      .catch(() => {
+        if (!cancelled) setSeatTypeMap({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [booking?.showtimeId]);
+
+  useEffect(() => {
     let cancelled = false;
     void fetchConcessions()
       .then((data) => {
@@ -230,8 +246,11 @@ export function CheckoutPage({ bookingId }: { bookingId: string }) {
   const movie = showtime ? getMovieBySlug(showtime.movieSlug) : null;
   const seats = useMemo(() => {
     const labels = booking?.seats?.length ? booking.seats : ["F1", "F2"];
-    return labels.map((label) => ({ label, type: seatTypeFromLabel(label) }));
-  }, [booking]);
+    return labels.map((label) => ({
+      label,
+      type: seatTypeMap[label] ?? (label.startsWith("F") ? "VIP" : "STANDARD"),
+    }));
+  }, [booking, seatTypeMap]);
   const total = payment?.amount ?? booking?.total ?? seats.reduce((sum, seat) => sum + seatPrice(showtime?.priceBase ?? 0, seat.type), 0);
   const transferContent = payment?.content ?? booking?.paymentCode ?? booking?.code ?? bookingId;
   const isSepay = (payment?.provider ?? booking?.paymentProvider) !== "MOCK";

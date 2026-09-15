@@ -8,4 +8,7 @@ export type Seat = {
   number: number;
   type: SeatType;
   state: SeatState;
+  /** Explicit sweetbox partner label, e.g. "A6". */
+  partner?: string | null;
+  label?: string;
 };

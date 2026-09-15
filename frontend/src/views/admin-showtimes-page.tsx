@@ -1,10 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import type { Showtime } from "@/@types/movie";
-import { closeAdminShowtime, createAdminShowtime, deleteAdminShowtime, updateAdminShowtime } from "@/api/admin";
+import {
+  closeAdminShowtime,
+  createAdminShowtime,
+  deleteAdminShowtime,
+  fetchAdminRooms,
+  updateAdminShowtime,
+  type AdminRoomSeat,
+} from "@/api/admin";
 import { ApiError } from "@/api/client";
 import { SeatBlockEditor } from "@/components/admin/seat-block-editor";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +50,26 @@ export function AdminShowtimesPage() {
   const [editing, setEditing] = useState<Showtime | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [roomLayouts, setRoomLayouts] = useState<Record<string, AdminRoomSeat[]>>({});
+
+  useEffect(() => {
+    void fetchAdminRooms()
+      .then((data) => {
+        const map: Record<string, AdminRoomSeat[]> = {};
+        for (const room of data.rooms) {
+          map[`${room.cinema}::${room.room}`] = room.seats ?? [];
+        }
+        setRoomLayouts(map);
+      })
+      .catch(() => {
+        /* keep fallback layout in editor */
+      });
+  }, []);
+
+  const formLayoutSeats = useMemo(
+    () => roomLayouts[`${form.cinema}::${form.room}`],
+    [form.cinema, form.room, roomLayouts],
+  );
 
   function startCreate() {
     setEditing(null);
@@ -324,6 +351,7 @@ export function AdminShowtimesPage() {
               <SeatBlockEditor
                 value={form.blockedSeats}
                 onChange={(blockedSeats) => setForm({ ...form, blockedSeats })}
+                layoutSeats={formLayoutSeats}
               />
             </div>
             <Button

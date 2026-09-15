@@ -230,7 +230,13 @@ export function SeatMapPage({ showtimeId, changeTicket }: { showtimeId: string; 
       </div>
 
       {view === "3d" ? (
-        <SeatMap3D seats={seats} selectedIds={selectedIds} priceBase={showtime.priceBase} onToggle={toggle} />
+        <SeatMap3D
+          seats={seats}
+          selectedIds={selectedIds}
+          priceBase={showtime.priceBase}
+          onToggle={toggle}
+          posterUrl={movie.posterUrl}
+        />
       ) : (
         <SeatMap seats={seats} selectedIds={selectedIds} onToggle={toggle} />
       )}

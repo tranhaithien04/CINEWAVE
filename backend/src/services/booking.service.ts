@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { getBookingByCode, getBookingById, listBookingsByShowtime, saveBooking } from "../helpers/booking-store.js";
 import { getMovieBySlug, getShowtimeById, listShowtimes } from "../helpers/catalog-store.js";
 import { computeConcessionTotal, ensureConcessionMenuLoaded, resolveConcessions, type ConcessionLine } from "../helpers/concessions.js";
+import { getRoomLayout } from "../helpers/room-layout.js";
 import {
   assertValidSeatSelection,
   buildSeatLayout,
@@ -82,22 +83,30 @@ export async function listShowtimeSeats(showtimeId: string, viewerEmail?: string
   const showtime = await getShowtimeById(showtimeId);
   if (!showtime) throw new DomainError("NOT_FOUND", "Không tìm thấy suất", 404);
   const occupied = await occupiedSeatMap(showtimeId, undefined, viewerEmail);
+  const layout = await getRoomLayout(showtime.cinema, showtime.room);
   return {
     showtimeId,
     blockedSeats: showtime.blockedSeats ?? [],
-    seats: buildSeatLayout(showtime.blockedSeats ?? []).map((seat) => ({
+    seats: buildSeatLayout(showtime.blockedSeats ?? [], layout.seats).map((seat) => ({
       id: seat.id,
+      label: seat.label,
       row: seat.row,
       number: seat.number,
       type: seat.type,
+      partner: seat.partner,
       state: seat.blocked ? "BLOCKED" : (occupied.get(seat.label) ?? "AVAILABLE"),
     })),
   };
 }
 
-function withTotals(booking: BookingRecord, priceBase: number, concessions?: ConcessionLine[]): BookingRecord {
+function withTotals(
+  booking: BookingRecord,
+  priceBase: number,
+  layoutSeats: Awaited<ReturnType<typeof getRoomLayout>>["seats"],
+  concessions?: ConcessionLine[],
+): BookingRecord {
   const lines = concessions ?? booking.concessions ?? [];
-  const seatTotal = computeSeatTotal(booking.seats, priceBase);
+  const seatTotal = computeSeatTotal(booking.seats, priceBase, layoutSeats);
   const concessionTotal = computeConcessionTotal(lines);
   return {
     ...booking,
@@ -140,8 +149,9 @@ export async function holdSeats(userId: string, body: HoldBody) {
   }
 
   let seats: string[];
+  const layout = await getRoomLayout(showtime.cinema, showtime.room);
   try {
-    seats = assertValidSeatSelection(body.seats ?? [], showtime.blockedSeats ?? []);
+    seats = assertValidSeatSelection(body.seats ?? [], showtime.blockedSeats ?? [], layout.seats);
   } catch (error) {
     mapSeatError(error instanceof Error ? error.message : "VALIDATION_ERROR");
   }
@@ -163,6 +173,7 @@ export async function holdSeats(userId: string, body: HoldBody) {
       concessions: [],
     },
     showtime.priceBase,
+    layout.seats,
     [],
   );
   return saveBooking(booking);
@@ -195,7 +206,8 @@ export async function updateConcessions(userId: string, bookingId: string, items
   if (!showtime) throw new DomainError("NOT_FOUND", "Suất chiếu không còn mở", 404);
   await ensureConcessionMenuLoaded();
   const lines = resolveConcessions(items);
-  return saveBooking(withTotals(booking, showtime.priceBase, lines));
+  const layout = await getRoomLayout(showtime.cinema, showtime.room);
+  return saveBooking(withTotals(booking, showtime.priceBase, layout.seats, lines));
 }
 
 export async function cancelMyTicket(userId: string, code: string) {
@@ -290,14 +302,16 @@ export async function rescheduleMyTicket(
   }
 
   let seats: string[];
+  const nextLayout = await getRoomLayout(nextShow.cinema, nextShow.room);
+  const currentLayout = await getRoomLayout(current.cinema, current.room);
   try {
-    seats = assertValidSeatSelection(body.seats ?? [], nextShow.blockedSeats ?? []);
+    seats = assertValidSeatSelection(body.seats ?? [], nextShow.blockedSeats ?? [], nextLayout.seats);
   } catch (error) {
     mapSeatError(error instanceof Error ? error.message : "VALIDATION_ERROR");
   }
 
-  const oldSeatTotal = booking.seatTotal ?? computeSeatTotal(booking.seats, current.priceBase);
-  const newSeatTotal = computeSeatTotal(seats, nextShow.priceBase);
+  const oldSeatTotal = booking.seatTotal ?? computeSeatTotal(booking.seats, current.priceBase, currentLayout.seats);
+  const newSeatTotal = computeSeatTotal(seats, nextShow.priceBase, nextLayout.seats);
   if (newSeatTotal !== oldSeatTotal) {
     throw new DomainError(
       "PRICE_MISMATCH",

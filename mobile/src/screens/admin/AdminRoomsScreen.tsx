@@ -84,6 +84,9 @@ export function AdminRoomsScreen() {
           <Text style={styles.back}>‹ Dashboard</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Phòng & Khóa Ghế</Text>
+        <Text style={styles.hint}>
+          Đổi loại ghế / thêm / xóa sơ đồ: dùng Admin Web. Tại đây chỉnh ghế khóa theo suất phòng.
+        </Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
       <FlatList
@@ -148,6 +151,7 @@ const styles = StyleSheet.create({
   header: { padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
   back: { color: colors.primaryLight, fontWeight: '700', marginBottom: 6 },
   title: { fontSize: 22, fontWeight: '900', color: '#fff' },
+  hint: { fontSize: 11, color: colors.textMuted, marginTop: 6, lineHeight: 16 },
   error: { color: colors.roseLight, marginTop: 6 },
   list: { padding: spacing.lg, gap: spacing.sm },
   empty: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },

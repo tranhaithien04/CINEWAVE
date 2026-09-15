@@ -128,9 +128,35 @@ const appMetaSchema = new Schema<{ key: string; value: string }>(
   { versionKey: false },
 );
 
+const roomLayoutSchema = new Schema(
+  {
+    id: { type: String, required: true, unique: true, index: true },
+    cinema: { type: String, required: true, index: true },
+    room: { type: String, required: true, index: true },
+    seats: {
+      type: [
+        {
+          _id: false,
+          label: { type: String, required: true },
+          row: { type: String, required: true },
+          number: { type: Number, required: true },
+          type: { type: String, required: true, enum: ["STANDARD", "VIP", "COUPLE"] },
+          partner: { type: String, default: null },
+        },
+      ],
+      default: [],
+    },
+    updatedAt: { type: String, required: true },
+  },
+  { versionKey: false },
+);
+
+roomLayoutSchema.index({ cinema: 1, room: 1 }, { unique: true });
+
 export const UserModel = model("User", userSchema);
 export const MovieModel = model("Movie", movieSchema);
 export const ShowtimeModel = model("Showtime", showtimeSchema);
 export const BookingModel = model("Booking", bookingSchema);
 export const NotificationModel = model("Notification", notificationSchema);
 export const AppMetaModel = model("AppMeta", appMetaSchema);
+export const RoomLayoutModel = model("RoomLayout", roomLayoutSchema);

@@ -120,11 +120,21 @@ export type ShowtimeInput = {
   blockedSeats?: string[];
 };
 
+export type AdminRoomSeat = {
+  label: string;
+  row: string;
+  number: number;
+  type: "STANDARD" | "VIP" | "COUPLE";
+  partner: string | null;
+};
+
 export type AdminRoom = {
   cinema: string;
   room: string;
   blockedSeats: string[];
   showtimeCount: number;
+  seats: AdminRoomSeat[];
+  layoutUpdatedAt?: string;
 };
 
 export function fetchAdminOverview() {
@@ -205,11 +215,13 @@ export function updateAdminRoomBlockedSeats(body: {
   cinema: string;
   room: string;
   blockedSeats: string[];
+  seats?: AdminRoomSeat[];
 }) {
   return api<{
     cinema: string;
     room: string;
     blockedSeats: string[];
+    seats?: AdminRoomSeat[];
     updatedCount: number;
     showtimes: Showtime[];
   }>("/admin/rooms", { method: "PATCH", body });

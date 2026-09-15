@@ -48,6 +48,13 @@ export type AdminRoom = {
   room: string;
   blockedSeats: string[];
   showtimeCount: number;
+  seats?: Array<{
+    label: string;
+    row: string;
+    number: number;
+    type: 'STANDARD' | 'VIP' | 'COUPLE';
+    partner: string | null;
+  }>;
 };
 
 export type AdminAgeVerification = {

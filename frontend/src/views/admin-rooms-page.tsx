@@ -7,14 +7,28 @@ import {
   fetchAdminRooms,
   updateAdminRoomBlockedSeats,
   type AdminRoom,
+  type AdminRoomSeat,
 } from "@/api/admin";
 import { ApiError } from "@/api/client";
-import { SeatBlockEditor } from "@/components/admin/seat-block-editor";
+import { SeatLayoutEditor, type RoomSeatDef } from "@/components/admin/seat-layout-editor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCatalog } from "@/hooks/use-catalog";
+
+function toEditorSeats(seats: AdminRoomSeat[] | undefined): RoomSeatDef[] {
+  if (seats?.length) {
+    return seats.map((seat) => ({
+      label: seat.label,
+      row: seat.row,
+      number: seat.number,
+      type: seat.type,
+      partner: seat.partner,
+    }));
+  }
+  return [];
+}
 
 export function AdminRoomsPage() {
   const { refresh } = useCatalog();
@@ -22,6 +36,7 @@ export function AdminRoomsPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<AdminRoom | null>(null);
   const [blockedSeats, setBlockedSeats] = useState<string[]>([]);
+  const [layoutSeats, setLayoutSeats] = useState<RoomSeatDef[]>([]);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -43,16 +58,22 @@ export function AdminRoomsPage() {
   function startEdit(room: AdminRoom) {
     setEditing(room);
     setBlockedSeats([...(room.blockedSeats ?? [])]);
+    setLayoutSeats(toEditorSeats(room.seats));
   }
 
   async function save() {
     if (!editing) return;
+    if (!layoutSeats.length) {
+      toast.error("Sơ đồ ghế không được rỗng");
+      return;
+    }
     setSaving(true);
     try {
       const result = await updateAdminRoomBlockedSeats({
         cinema: editing.cinema,
         room: editing.room,
         blockedSeats,
+        seats: layoutSeats,
       });
       toast.success(`Đã cập nhật ${result.updatedCount} suất của phòng ${editing.room}`);
       setEditing(null);
@@ -74,7 +95,8 @@ export function AdminRoomsPage() {
           </Badge>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Khóa ghế hỏng/không bán theo phòng. Thay đổi áp dụng cho mọi suất cùng rạp + phòng.
+          Khóa ghế, đổi loại (Thường / VIP / Đôi), thêm hàng/cột hoặc xóa ghế. Áp dụng cho mọi suất cùng rạp +
+          phòng.
         </p>
       </div>
 
@@ -100,7 +122,7 @@ export function AdminRoomsPage() {
                     {room.cinema} · {room.room}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {room.showtimeCount} suất · Ghế khóa:{" "}
+                    {room.showtimeCount} suất · {room.seats?.length ?? 0} ghế · Khóa:{" "}
                     <span className="font-mono text-rose-300">
                       {room.blockedSeats.length ? room.blockedSeats.join(", ") : "không có"}
                     </span>
@@ -121,14 +143,19 @@ export function AdminRoomsPage() {
       </Card>
 
       <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="rounded-2xl border-white/10 bg-zinc-950/95 backdrop-blur-2xl sm:max-w-xl">
+        <DialogContent className="rounded-2xl border-white/10 bg-zinc-950/95 backdrop-blur-2xl sm:max-w-2xl">
           <DialogHeader className="border-b border-white/5 pb-3">
             <DialogTitle className="font-display text-xl font-bold text-white">
               {editing ? `${editing.cinema} · ${editing.room}` : "Phòng"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
-            <SeatBlockEditor value={blockedSeats} onChange={setBlockedSeats} />
+            <SeatLayoutEditor
+              seats={layoutSeats}
+              blockedSeats={blockedSeats}
+              onChangeSeats={setLayoutSeats}
+              onChangeBlocked={setBlockedSeats}
+            />
             <Button
               disabled={saving}
               onClick={() => void save()}

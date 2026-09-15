@@ -14,8 +14,9 @@ import {
 } from "../helpers/catalog-store.js";
 import { listUsers, updateUser } from "../helpers/user-store.js";
 import { toPublicUser } from "../models/user.js";
+import { getRoomLayout, saveRoomLayout } from "../helpers/room-layout.js";
 import { DomainError } from "../models/errors.js";
-import { parseBroadcastInput, parseConcessionInput, parseMovieInput, parseRoomBlockedInput, parseShowtimeInput, parseUserRole, slugify } from "../validators/admin.js";
+import { parseBroadcastInput, parseConcessionInput, parseMovieInput, parseRoomBlockedInput, parseRoomLayoutInput, parseShowtimeInput, parseUserRole, slugify } from "../validators/admin.js";
 import {
   deleteConcessionItem,
   listConcessionMenu,
@@ -24,6 +25,7 @@ import {
 import { listAgeVerifications } from "../helpers/age-verification-store.js";
 import { notifyUser } from "./notification.service.js";
 import { checkInTicket as checkInPaidTicket } from "./ticket.service.js";
+import { parseBlockedSeatsInput } from "../helpers/seat-pricing.js";
 
 export async function getOverview() {
   const [movies, showtimes, bookings, users] = await Promise.all([
@@ -227,8 +229,21 @@ export async function listRooms() {
     }
     current.showtimeCount += 1;
   }
-  return [...rooms.values()].sort((a, b) =>
+  const list = [...rooms.values()].sort((a, b) =>
     a.cinema === b.cinema ? a.room.localeCompare(b.room) : a.cinema.localeCompare(b.cinema),
+  );
+  return Promise.all(
+    list.map(async (room) => {
+      const layout = await getRoomLayout(room.cinema, room.room);
+      const known = new Set(layout.seats.map((seat) => seat.label));
+      const blockedSeats = room.blockedSeats.filter((label) => known.has(label.toUpperCase()));
+      return {
+        ...room,
+        blockedSeats,
+        seats: layout.seats,
+        layoutUpdatedAt: layout.updatedAt,
+      };
+    }),
   );
 }
 
@@ -254,7 +269,22 @@ export async function listCinemas() {
 }
 
 export async function updateRoomBlockedSeats(body: unknown) {
+  if (body && typeof body === "object" && Array.isArray((body as { seats?: unknown }).seats)) {
+    return updateRoomLayout(body);
+  }
+
   const input = parseRoomBlockedInput(body);
+  const layout = await getRoomLayout(input.cinema, input.room);
+  let blockedSeats: string[];
+  try {
+    blockedSeats = parseBlockedSeatsInput(input.blockedSeats, layout.seats);
+  } catch (error) {
+    throw new DomainError(
+      "VALIDATION_ERROR",
+      error instanceof Error ? error.message : "Danh sách ghế khóa không hợp lệ",
+    );
+  }
+
   const showtimes = await listShowtimes();
   const matched = showtimes.filter(
     (show) => show.cinema === input.cinema && show.room === input.room,
@@ -264,12 +294,45 @@ export async function updateRoomBlockedSeats(body: unknown) {
   }
   const updated = [];
   for (const show of matched) {
-    updated.push(await saveShowtime({ ...show, blockedSeats: input.blockedSeats }));
+    updated.push(await saveShowtime({ ...show, blockedSeats }));
   }
   return {
     cinema: input.cinema,
     room: input.room,
+    blockedSeats,
+    seats: layout.seats,
+    updatedCount: updated.length,
+    showtimes: updated,
+  };
+}
+
+export async function updateRoomLayout(body: unknown) {
+  const input = parseRoomLayoutInput(body);
+  const layout = await saveRoomLayout({
+    cinema: input.cinema,
+    room: input.room,
+    seats: input.seats,
+  });
+
+  const showtimes = await listShowtimes();
+  const matched = showtimes.filter(
+    (show) => show.cinema === input.cinema && show.room === input.room,
+  );
+  if (!matched.length) {
+    throw new DomainError("NOT_FOUND", "Không tìm thấy phòng chiếu nào khớp", 404);
+  }
+
+  const updated = [];
+  for (const show of matched) {
+    updated.push(await saveShowtime({ ...show, blockedSeats: input.blockedSeats }));
+  }
+
+  return {
+    cinema: input.cinema,
+    room: input.room,
     blockedSeats: input.blockedSeats,
+    seats: layout.seats,
+    layoutUpdatedAt: layout.updatedAt,
     updatedCount: updated.length,
     showtimes: updated,
   };

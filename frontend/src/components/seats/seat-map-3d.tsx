@@ -46,16 +46,19 @@ export function SeatMap3D({
   selectedIds,
   priceBase,
   onToggle,
+  posterUrl,
 }: {
   seats: Seat[];
   selectedIds: string[];
   priceBase: number;
   onToggle: (seat: Seat) => void;
+  posterUrl?: string | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pickerRef = useRef<SeatPickerScene | null>(null);
   const selectedRef = useRef(selectedIds);
   const seatsRef = useRef(seats);
+  const posterRef = useRef(posterUrl);
   const dragRef = useRef({ active: false, moved: false, x: 0, y: 0 });
   const [tip, setTip] = useState<{ x: number; y: number; seat: Seat } | null>(null);
   const [mode, setMode] = useState<CameraMode>("orbit");
@@ -71,10 +74,14 @@ export function SeatMap3D({
   }, [seats]);
 
   useEffect(() => {
+    posterRef.current = posterUrl;
+  }, [posterUrl]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const picker = createSeatPickerScene(canvas, seatsRef.current);
+    const picker = createSeatPickerScene(canvas, seatsRef.current, { posterUrl: posterRef.current });
     pickerRef.current = picker;
     setSelectedSeats(picker, selectedRef.current);
     setMode("orbit");
@@ -109,7 +116,7 @@ export function SeatMap3D({
       picker.dispose();
       pickerRef.current = null;
     };
-  }, [layoutKey]);
+  }, [layoutKey, posterUrl]);
 
   useEffect(() => {
     const picker = pickerRef.current;

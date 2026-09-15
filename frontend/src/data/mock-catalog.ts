@@ -131,8 +131,17 @@ export function buildSeatMap(
       const number = index + 1;
       const label = `${row}${number}`;
       const type = row === "F" ? "VIP" : row === "A" && (number === 5 || number === 6) ? "COUPLE" : "STANDARD";
+      const partner = number === 5 ? "A6" : number === 6 ? "A5" : null;
       const state = blocked.has(label) ? "BLOCKED" : (occupancy[label] ?? "AVAILABLE");
-      return { id: `seat-${label}`, row, number, type, state } satisfies Seat;
+      return {
+        id: `seat-${label}`,
+        label,
+        row,
+        number,
+        type,
+        partner: type === "COUPLE" ? partner : null,
+        state,
+      } satisfies Seat;
     }),
   );
 }
