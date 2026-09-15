@@ -17,7 +17,7 @@ import { colors, radius, spacing } from '../../constants/theme';
 import { GlassCard } from '../../components/GlassCard';
 import { AgeBadge } from '../../components/AgeBadge';
 import { NeonButton } from '../../components/NeonButton';
-import { createMovie, deleteMovie } from '../../api/admin';
+import { createMovie, deleteMovie, enrichAdminMovie, syncAdminNowPlaying } from '../../api/admin';
 
 export function AdminMoviesScreen() {
   const navigation = useNavigation<any>();
@@ -31,6 +31,33 @@ export function AdminMoviesScreen() {
   const [rating, setRating] = useState<AgeRating>('P');
   const [genres, setGenres] = useState('Hành động, Phiêu lưu');
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncNowPlaying = async () => {
+    setSyncing(true);
+    try {
+      const res = await syncAdminNowPlaying({ limit: 12 });
+      await refresh();
+      Alert.alert(
+        'Đồng bộ xong',
+        `Import ${res.imported.length} phim · bỏ qua ${res.skipped} · lỗi ${res.failed.length}`,
+      );
+    } catch (err: any) {
+      Alert.alert('Lỗi', err?.message || 'Không sync được phim đang chiếu');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleEnrich = async (m: Movie) => {
+    try {
+      await enrichAdminMovie(m.id);
+      await refresh();
+      Alert.alert('Đã làm giàu', `Đã cập nhật metadata cho ${m.title}`);
+    } catch (err: any) {
+      Alert.alert('Lỗi', err?.message || 'Không enrich được phim');
+    }
+  };
 
   const handleCreate = async () => {
     if (!title.trim()) {
@@ -91,9 +118,14 @@ export function AdminMoviesScreen() {
           </TouchableOpacity>
           <View style={styles.titleRow}>
             <Text style={styles.title}>Quản Lý Phim ({movies.length})</Text>
-            <TouchableOpacity onPress={() => setModalOpen(true)} style={styles.addBtn}>
-              <Text style={styles.addBtnText}>+ Thêm phim</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={() => void handleSyncNowPlaying()} style={styles.addBtn}>
+                <Text style={styles.addBtnText}>{syncing ? '...' : 'Sync'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setModalOpen(true)} style={styles.addBtn}>
+                <Text style={styles.addBtnText}>+ Thêm</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -115,9 +147,14 @@ export function AdminMoviesScreen() {
                   <Text style={styles.slugText}>Slug: {item.slug}</Text>
                 </View>
 
-                <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteBtn}>
-                  <Text style={styles.deleteBtnText}>Xóa</Text>
-                </TouchableOpacity>
+                <View style={{ gap: 8 }}>
+                  <TouchableOpacity onPress={() => void handleEnrich(item)} style={styles.deleteBtn}>
+                    <Text style={[styles.deleteBtnText, { color: colors.primaryLight }]}>Enrich</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteBtn}>
+                    <Text style={styles.deleteBtnText}>Xóa</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </GlassCard>
           )}

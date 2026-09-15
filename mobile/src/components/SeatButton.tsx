@@ -2,6 +2,7 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { Seat } from '../types';
 import { colors } from '../constants/theme';
+import { isSeatTaken } from '../utils/seat';
 
 interface SeatButtonProps {
   seat: Seat;
@@ -10,7 +11,7 @@ interface SeatButtonProps {
 }
 
 export function SeatButton({ seat, isSelected, onPress }: SeatButtonProps) {
-  const isSold = seat.status === 'SOLD';
+  const isSold = isSeatTaken(seat);
   const isCouple = seat.type === 'COUPLE';
   const isVip = seat.type === 'VIP';
 

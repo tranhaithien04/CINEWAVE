@@ -21,6 +21,8 @@ interface AgeGateModalProps {
   visible: boolean;
   rating: AgeRating;
   movieSlug?: string;
+  bookingId?: string;
+  showtimeId?: string;
   onClose: () => void;
   onPassed: (result: AgeVerificationResult) => void;
 }
@@ -37,10 +39,14 @@ export function AgeGateModal({
   visible,
   rating,
   movieSlug,
+  bookingId,
+  showtimeId,
   onClose,
   onPassed,
 }: AgeGateModalProps) {
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageMime, setImageMime] = useState<string | null>(null);
+  const [imageName, setImageName] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<AgeVerificationResult | null>(null);
 
@@ -88,16 +94,21 @@ export function AgeGateModal({
         ? await ImagePicker.launchCameraAsync({
             allowsEditing: true,
             aspect: [16, 10],
-            quality: 0.8,
+            quality: 0.85,
+            exif: false,
           })
         : await ImagePicker.launchImageLibraryAsync({
             allowsEditing: true,
             aspect: [16, 10],
-            quality: 0.8,
+            quality: 0.85,
+            exif: false,
           });
 
       if (!pickerResult.canceled && pickerResult.assets[0]) {
-        setImageUri(pickerResult.assets[0].uri);
+        const asset = pickerResult.assets[0];
+        setImageUri(asset.uri);
+        setImageMime(asset.mimeType ?? null);
+        setImageName(asset.fileName ?? null);
         setResult(null);
       }
     } catch (err: any) {
@@ -117,6 +128,10 @@ export function AgeGateModal({
         imageUri,
         rating,
         movieSlug,
+        bookingId,
+        showtimeId,
+        mimeType: imageMime,
+        fileName: imageName,
       });
 
       setResult(data);
@@ -131,22 +146,19 @@ export function AgeGateModal({
           data.message || 'Rất tiếc bạn chưa đủ độ tuổi theo quy định của phim này.'
         );
       }
-    } catch {
-      // Fallback mock pass for development demo if server offline
-      const mockResult: AgeVerificationResult = {
-        passed: true,
+    } catch (err: any) {
+      const fail: AgeVerificationResult = {
+        passed: false,
         requiredAge: reqAge || 18,
-        computedAge: 20,
-        confidence: 0.96,
-        verificationId: `vrf-${Date.now()}`,
-        idMasked: '079******123',
-        message: 'Xác thực CCCD thành công! Đủ điều kiện xem phim.',
+        computedAge: null,
+        confidence: null,
+        verificationId: '',
+        idMasked: null,
+        message: err?.message || 'Không xác minh được CCCD. Kiểm tra kết nối AI/API và thử lại.',
         rawImageDeleted: true,
       };
-      setResult(mockResult);
-      setTimeout(() => {
-        onPassed(mockResult);
-      }, 1200);
+      setResult(fail);
+      Alert.alert('Xác minh thất bại', fail.message || 'Vui lòng chụp lại ảnh CCCD rõ hơn.');
     } finally {
       setScanning(false);
     }
@@ -154,6 +166,8 @@ export function AgeGateModal({
 
   const reset = () => {
     setImageUri(null);
+    setImageMime(null);
+    setImageName(null);
     setResult(null);
     setScanning(false);
   };

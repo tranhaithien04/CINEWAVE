@@ -14,8 +14,9 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, radius, spacing } from '../../constants/theme';
 import { fetchAdminBookings, cancelAdminBooking, refundAdminBooking } from '../../api/admin';
 import { AdminBooking } from '../../types';
-import { mockTickets, formatVnd } from '../../data/mock-data';
+import { formatVnd } from '../../data/mock-data';
 import { GlassCard } from '../../components/GlassCard';
+import { ApiError } from '../../api/client';
 
 export function AdminBookingsScreen() {
   const navigation = useNavigation<any>();
@@ -26,9 +27,10 @@ export function AdminBookingsScreen() {
   const loadData = async () => {
     try {
       const data = await fetchAdminBookings();
-      setBookings(data.length ? data : mockTickets);
+      setBookings(data);
     } catch {
-      setBookings(mockTickets);
+      setBookings([]);
+      Alert.alert('Lỗi', 'Không tải được danh sách đơn hàng.');
     } finally {
       setRefreshing(false);
     }
@@ -56,10 +58,8 @@ export function AdminBookingsScreen() {
               prev.map((b) => (b.id === booking.id ? { ...b, status: 'CANCELLED' } : b))
             );
             Alert.alert('Thành công', 'Đã hủy đơn hàng.');
-          } catch {
-            setBookings((prev) =>
-              prev.map((b) => (b.id === booking.id ? { ...b, status: 'CANCELLED' } : b))
-            );
+          } catch (err) {
+            Alert.alert('Lỗi', err instanceof ApiError ? err.message : 'Không hủy được đơn');
           }
         },
       },
@@ -78,10 +78,8 @@ export function AdminBookingsScreen() {
               prev.map((b) => (b.id === booking.id ? { ...b, status: 'REFUNDED' } : b))
             );
             Alert.alert('Thành công', 'Đã hoàn tiền đơn hàng.');
-          } catch {
-            setBookings((prev) =>
-              prev.map((b) => (b.id === booking.id ? { ...b, status: 'REFUNDED' } : b))
-            );
+          } catch (err) {
+            Alert.alert('Lỗi', err instanceof ApiError ? err.message : 'Không hoàn tiền được');
           }
         },
       },

@@ -3,16 +3,44 @@ import { DEFAULT_API_URL, STORAGE_KEYS } from '../constants/config';
 
 let currentApiUrl = DEFAULT_API_URL;
 
-// Load persisted API URL if any
-AsyncStorage.getItem(STORAGE_KEYS.API_URL).then((saved) => {
-  if (saved && saved.trim()) {
-    currentApiUrl = saved.trim();
+function isUnusableMobileApiHost(url: string) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === 'localhost' || host === '127.0.0.1' || host === '10.10.122.176';
+  } catch {
+    return true;
   }
+}
+
+// Load persisted API URL if any — never keep localhost on a physical phone
+AsyncStorage.getItem(STORAGE_KEYS.API_URL).then((saved) => {
+  const trimmed = saved?.trim();
+  if (!trimmed || isUnusableMobileApiHost(trimmed)) {
+    currentApiUrl = DEFAULT_API_URL;
+    void AsyncStorage.setItem(STORAGE_KEYS.API_URL, DEFAULT_API_URL);
+    return;
+  }
+  currentApiUrl = trimmed;
 });
 
 export function setApiUrl(url: string) {
-  currentApiUrl = url.trim();
+  const next = url.trim();
+  if (isUnusableMobileApiHost(next)) {
+    currentApiUrl = DEFAULT_API_URL;
+    void AsyncStorage.setItem(STORAGE_KEYS.API_URL, DEFAULT_API_URL);
+    return;
+  }
+  currentApiUrl = next;
   void AsyncStorage.setItem(STORAGE_KEYS.API_URL, currentApiUrl);
+}
+
+/** Guarantee a phone-reachable API base before OAuth / network calls. */
+export function ensureLanApiUrl(): string {
+  if (isUnusableMobileApiHost(currentApiUrl)) {
+    currentApiUrl = DEFAULT_API_URL;
+    void AsyncStorage.setItem(STORAGE_KEYS.API_URL, DEFAULT_API_URL);
+  }
+  return currentApiUrl;
 }
 
 export function getApiUrl() {
@@ -29,7 +57,7 @@ export class ApiError extends Error {
   constructor(
     public readonly code: string,
     message: string,
-    public readonly status: number
+    public readonly status: number,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -107,44 +135,74 @@ export async function uploadCccd(input: {
   movieSlug?: string;
   bookingId?: string;
   showtimeId?: string;
+  mimeType?: string | null;
+  fileName?: string | null;
 }) {
   const token = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-  const formData = new FormData();
 
-  const filename = input.imageUri.split('/').pop() || 'cccd_card.jpg';
-  const match = /\.(\w+)$/.exec(filename);
-  const type = match ? `image/${match[1]}` : 'image/jpeg';
+  // RN New Architecture FormData+fetch throws "Unsupported FormDataPart implementation".
+  // Use native multipart upload instead.
+  const FileSystem = await import('expo-file-system/legacy');
 
-  // React Native FormData file format
-  formData.append('file', {
-    uri: input.imageUri,
-    name: filename,
-    type,
-  } as any);
+  const rawName =
+    input.fileName?.trim() ||
+    input.imageUri.split('/').pop()?.split('?')[0] ||
+    'cccd.jpg';
+  const extMatch = /\.(\w+)$/.exec(rawName);
+  let ext = (extMatch?.[1] || 'jpg').toLowerCase();
+  if (ext === 'heic' || ext === 'heif') ext = 'jpg';
 
-  formData.append('rating', input.rating);
-  if (input.movieSlug) formData.append('movieSlug', input.movieSlug);
-  if (input.bookingId) formData.append('bookingId', input.bookingId);
-  if (input.showtimeId) formData.append('showtimeId', input.showtimeId);
-
-  const headers: Record<string, string> = {
-    // Note: don't set Content-Type header manually for FormData in React Native
+  const mimeFromExt: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
   };
+  const mimeType =
+    input.mimeType && input.mimeType.startsWith('image/')
+      ? input.mimeType === 'image/heic' || input.mimeType === 'image/heif'
+        ? 'image/jpeg'
+        : input.mimeType
+      : mimeFromExt[ext] || 'image/jpeg';
+
+  const filename = `cccd_${Date.now()}.${ext === 'jpeg' ? 'jpg' : ext}`;
+
+  const parameters: Record<string, string> = {
+    rating: input.rating,
+  };
+  if (input.movieSlug) parameters.movieSlug = input.movieSlug;
+  if (input.bookingId) parameters.bookingId = input.bookingId;
+  if (input.showtimeId) parameters.showtimeId = input.showtimeId;
+
+  const headers: Record<string, string> = {};
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(apiUrl('/age-verification'), {
-    method: 'POST',
+  const upload = await FileSystem.uploadAsync(apiUrl('/age-verification'), input.imageUri, {
+    httpMethod: 'POST',
+    uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+    fieldName: 'file',
+    mimeType,
+    parameters,
     headers,
-    body: formData,
+    sessionType: FileSystem.FileSystemSessionType.FOREGROUND,
   });
 
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new ApiError(data.code ?? 'ERROR', data.message ?? 'Xác minh thất bại', res.status);
+  let data: any = {};
+  try {
+    data = upload.body ? JSON.parse(upload.body) : {};
+  } catch {
+    data = { message: upload.body || 'Phản hồi không hợp lệ từ máy chủ' };
+  }
+
+  if (upload.status < 200 || upload.status >= 300) {
+    throw new ApiError(
+      data.code ?? 'ERROR',
+      data.message ?? `Xác minh thất bại (${upload.status})`,
+      upload.status,
+    );
   }
 
   return data;
 }
-

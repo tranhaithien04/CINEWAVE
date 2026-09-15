@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,10 @@ import { Seat } from '../types';
 import { colors, radius, spacing } from '../constants/theme';
 import { buildSeatMap, formatVnd, seatPrice } from '../data/mock-data';
 import { holdSeats } from '../api/bookings';
+import { fetchShowtimeById, fetchShowtimeSeats } from '../api/catalog';
+import { rescheduleMyTicket } from '../api/tickets';
+import { couplePartner, isSeatTaken, MAX_SEATS_PER_BOOKING } from '../utils/seat';
+import { Showtime } from '../types';
 import { ScreenCurve } from '../components/ScreenCurve';
 import { SeatButton } from '../components/SeatButton';
 import { HoldTimer } from '../components/HoldTimer';
@@ -23,14 +27,45 @@ import { NeonButton } from '../components/NeonButton';
 export function SeatMapScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const { showtimeId } = route.params;
+  const { showtimeId, changeTicket } = route.params as { showtimeId: string; changeTicket?: string };
   const { getShowtimeById, getMovieBySlug } = useCatalog();
   const { user } = useAuth();
 
-  const showtime = getShowtimeById(showtimeId);
+  const catalogShow = getShowtimeById(showtimeId);
+  const [showtime, setShowtime] = useState<Showtime | null>(catalogShow);
   const movie = showtime ? getMovieBySlug(showtime.movieSlug) : null;
+  const changing = Boolean(changeTicket);
 
-  const [seats] = useState<Seat[]>(() => buildSeatMap());
+  const [seats, setSeats] = useState<Seat[]>(() => buildSeatMap());
+
+  useEffect(() => {
+    if (catalogShow) {
+      setShowtime(catalogShow);
+      return;
+    }
+    let cancelled = false;
+    void fetchShowtimeById(showtimeId).then((data) => {
+      if (!cancelled) setShowtime(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [catalogShow, showtimeId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      void fetchShowtimeSeats(showtimeId).then((data) => {
+        if (!cancelled && data.length) setSeats(data);
+      });
+    };
+    load();
+    const timer = setInterval(load, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [showtimeId]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const [holding, setHolding] = useState(false);
@@ -56,31 +91,30 @@ export function SeatMapScreen() {
   }, [selectedSeats, showtime]);
 
   const toggleSeat = (seat: Seat) => {
-    if (seat.status === 'SOLD') return;
+    if (isSeatTaken(seat)) return;
 
     setSelectedIds((prev) => {
-      const isCurrentlySelected = prev.includes(seat.id);
+      const partner = couplePartner(seats, seat);
+      const bundle = partner ? [seat, partner] : [seat];
+      const currentSet = new Set(prev);
 
-      // Check if couple seat -> auto pair with adjacent
-      let targetIds = [seat.id];
-      if (seat.type === 'COUPLE') {
-        const partnerNum = seat.number % 2 === 1 ? seat.number + 1 : seat.number - 1;
-        const partnerId = `${seat.row}${partnerNum}`;
-        const partnerSeat = seats.find((s) => s.id === partnerId);
-        if (partnerSeat && partnerSeat.status !== 'SOLD') {
-          targetIds = [seat.id, partnerId];
-        }
+      if (currentSet.has(seat.id)) {
+        const remove = new Set(bundle.map((item) => item.id));
+        return prev.filter((id) => !remove.has(id));
       }
 
-      if (isCurrentlySelected) {
-        return prev.filter((id) => !targetIds.includes(id));
-      } else {
-        if (prev.length + targetIds.length > 8) {
-          Alert.alert('Giới hạn ghế', 'Mỗi lần đặt tối đa 8 ghế.');
-          return prev;
-        }
-        return [...prev, ...targetIds.filter((id) => !prev.includes(id))];
+      if (partner && isSeatTaken(partner)) {
+        Alert.alert('Ghế đôi', 'Ghế đôi phải chọn cả cặp còn trống.');
+        return prev;
       }
+
+      const addIds = bundle.map((item) => item.id).filter((id) => !currentSet.has(id));
+      const next = [...prev, ...addIds];
+      if (next.length > MAX_SEATS_PER_BOOKING) {
+        Alert.alert('Giới hạn ghế', `Mỗi lần đặt tối đa ${MAX_SEATS_PER_BOOKING} ghế.`);
+        return prev;
+      }
+      return next;
     });
   };
 
@@ -106,22 +140,40 @@ export function SeatMapScreen() {
 
     setHolding(true);
     try {
+      const labels = selectedSeats.map((s) => `${s.row}${s.number}`);
+      if (changing && changeTicket) {
+        const data = await rescheduleMyTicket(changeTicket, {
+          showtimeId: showtime.id,
+          seats: labels,
+        });
+        Alert.alert('Đổi suất thành công', `Ghế mới: ${data.ticket.seats.join(', ')}`, [
+          {
+            text: 'Xem vé',
+            onPress: () => navigation.navigate('TicketDetail', { code: data.ticket.code }),
+          },
+        ]);
+        return;
+      }
+
       const res = await holdSeats({
         showtimeId: showtime.id,
         movieSlug: movie.slug,
-        seats: selectedSeats.map((s) => s.id),
+        seats: labels,
         total: totalPrice,
       });
 
       navigation.navigate('Checkout', { bookingId: res.booking.id });
     } catch (err: any) {
-      Alert.alert('Lỗi giữ ghế', err?.message || 'Không thể giữ ghế vào lúc này.');
+      Alert.alert(
+        changing ? 'Không đổi được suất' : 'Lỗi giữ ghế',
+        err?.message || 'Không thể xử lý yêu cầu vào lúc này.',
+      );
     } finally {
       setHolding(false);
     }
   };
 
-  if (!showtime || !movie) {
+  if (!showtime || !movie || showtime.closed) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.errorBox}>

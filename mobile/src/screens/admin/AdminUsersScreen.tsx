@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,18 +13,29 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, radius, spacing } from '../../constants/theme';
 import { fetchAdminUsers, updateUserRole, AdminUser } from '../../api/admin';
 import { GlassCard } from '../../components/GlassCard';
+import { ApiError } from '../../api/client';
+
+const ROLES: Array<AdminUser['role']> = ['CUSTOMER', 'STAFF', 'ADMIN'];
+
+function roleLabel(role: AdminUser['role']) {
+  if (role === 'ADMIN') return '👑 ADMIN';
+  if (role === 'STAFF') return '🎫 STAFF';
+  return '👤 KHÁCH HÀNG';
+}
 
 export function AdminUsersScreen() {
   const navigation = useNavigation<any>();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
       const data = await fetchAdminUsers();
       setUsers(data);
-    } catch {
-      // Keep state
+      setError(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Không tải được người dùng');
     } finally {
       setRefreshing(false);
     }
@@ -39,27 +50,26 @@ export function AdminUsersScreen() {
     void loadData();
   };
 
-  const handleToggleRole = (u: AdminUser) => {
-    const nextRole = u.role === 'ADMIN' ? 'CUSTOMER' : 'ADMIN';
-    Alert.alert('Đổi quyền tài khoản', `Đổi quyền của ${u.email} thành ${nextRole}?`, [
-      { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Cập nhật',
-        onPress: async () => {
-          try {
-            await updateUserRole(u.id, nextRole);
-            setUsers((prev) =>
-              prev.map((item) => (item.id === u.id ? { ...item, role: nextRole } : item))
-            );
-            Alert.alert('Thành công', `Tài khoản hiện có vai trò ${nextRole}.`);
-          } catch {
-            setUsers((prev) =>
-              prev.map((item) => (item.id === u.id ? { ...item, role: nextRole } : item))
-            );
-          }
-        },
-      },
-    ]);
+  const handleChangeRole = (u: AdminUser) => {
+    Alert.alert(
+      'Đổi quyền tài khoản',
+      `Chọn vai trò mới cho ${u.email}`,
+      [
+        ...ROLES.filter((role) => role !== u.role).map((role) => ({
+          text: role,
+          onPress: async () => {
+            try {
+              const res = await updateUserRole(u.id, role);
+              setUsers((prev) => prev.map((item) => (item.id === u.id ? res.user : item)));
+              Alert.alert('Thành công', `Tài khoản hiện có vai trò ${role}.`);
+            } catch (err) {
+              Alert.alert('Lỗi', err instanceof ApiError ? err.message : 'Không đổi được quyền');
+            }
+          },
+        })),
+        { text: 'Hủy', style: 'cancel' },
+      ],
+    );
   };
 
   return (
@@ -70,7 +80,8 @@ export function AdminUsersScreen() {
             <Text style={styles.backBtnText}>‹ Dashboard</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Quản Lý Người Dùng ({users.length})</Text>
-          <Text style={styles.subtitle}>Danh sách thành viên và phân quyền quản trị.</Text>
+          <Text style={styles.subtitle}>Phân quyền CUSTOMER / STAFF / ADMIN.</Text>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
 
         <FlatList
@@ -78,6 +89,7 @@ export function AdminUsersScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+          ListEmptyComponent={<Text style={styles.empty}>Chưa có người dùng.</Text>}
           renderItem={({ item }) => (
             <GlassCard style={styles.card}>
               <View style={styles.userRow}>
@@ -93,27 +105,30 @@ export function AdminUsersScreen() {
                   <View
                     style={[
                       styles.roleTag,
-                      item.role === 'ADMIN' ? styles.roleAdmin : styles.roleCustomer,
+                      item.role === 'ADMIN'
+                        ? styles.roleAdmin
+                        : item.role === 'STAFF'
+                          ? styles.roleStaff
+                          : styles.roleCustomer,
                     ]}
                   >
                     <Text
                       style={[
                         styles.roleText,
-                        item.role === 'ADMIN' ? styles.roleTextAdmin : styles.roleTextCustomer,
+                        item.role === 'ADMIN'
+                          ? styles.roleTextAdmin
+                          : item.role === 'STAFF'
+                            ? styles.roleTextStaff
+                            : styles.roleTextCustomer,
                       ]}
                     >
-                      {item.role === 'ADMIN' ? '👑 ADMIN' : '👤 KHÁCH HÀNG'}
+                      {roleLabel(item.role)}
                     </Text>
                   </View>
                 </View>
 
-                <TouchableOpacity
-                  onPress={() => handleToggleRole(item)}
-                  style={styles.switchRoleBtn}
-                >
-                  <Text style={styles.switchRoleBtnText}>
-                    {item.role === 'ADMIN' ? 'Hạ quyền' : 'Nâng Admin'}
-                  </Text>
+                <TouchableOpacity onPress={() => handleChangeRole(item)} style={styles.switchRoleBtn}>
+                  <Text style={styles.switchRoleBtnText}>Đổi role</Text>
                 </TouchableOpacity>
               </View>
             </GlassCard>
@@ -125,13 +140,8 @@ export function AdminUsersScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  container: {
-    flex: 1,
-  },
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   header: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
@@ -139,37 +149,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: {
-    marginBottom: spacing.xs,
-  },
-  backBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.primaryLight,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#ffffff',
-  },
-  subtitle: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  list: {
-    padding: spacing.lg,
-    gap: spacing.sm,
-    paddingBottom: spacing.xxxl,
-  },
-  card: {
-    padding: spacing.md,
-  },
-  userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
+  backBtn: { marginBottom: spacing.xs },
+  backBtnText: { fontSize: 13, fontWeight: '700', color: colors.primaryLight },
+  title: { fontSize: 22, fontWeight: '900', color: '#ffffff' },
+  subtitle: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+  error: { color: colors.roseLight, marginTop: 6, fontSize: 12 },
+  list: { padding: spacing.lg, gap: spacing.sm, paddingBottom: spacing.xxxl },
+  empty: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl },
+  card: { padding: spacing.md },
+  userRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   avatar: {
     width: 44,
     height: 44,
@@ -180,21 +168,9 @@ const styles = StyleSheet.create({
     borderColor: colors.borderCyan,
     borderWidth: 1,
   },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: colors.primaryLight,
-  },
-  userName: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#ffffff',
-  },
-  userEmail: {
-    fontSize: 11,
-    color: colors.textMuted,
-    marginTop: 1,
-  },
+  avatarText: { fontSize: 18, fontWeight: '900', color: colors.primaryLight },
+  userName: { fontSize: 14, fontWeight: '800', color: '#ffffff' },
+  userEmail: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
   roleTag: {
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -203,24 +179,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
     borderWidth: 1,
   },
-  roleAdmin: {
-    backgroundColor: 'rgba(234, 179, 8, 0.15)',
-    borderColor: 'rgba(234, 179, 8, 0.35)',
-  },
-  roleCustomer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  roleText: {
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  roleTextAdmin: {
-    color: colors.goldLight,
-  },
-  roleTextCustomer: {
-    color: colors.textSecondary,
-  },
+  roleAdmin: { backgroundColor: 'rgba(234, 179, 8, 0.15)', borderColor: 'rgba(234, 179, 8, 0.35)' },
+  roleStaff: { backgroundColor: 'rgba(6, 182, 212, 0.15)', borderColor: 'rgba(6, 182, 212, 0.35)' },
+  roleCustomer: { backgroundColor: 'rgba(255, 255, 255, 0.06)', borderColor: 'rgba(255, 255, 255, 0.12)' },
+  roleText: { fontSize: 9, fontWeight: '800' },
+  roleTextAdmin: { color: colors.goldLight },
+  roleTextStaff: { color: colors.primaryLight },
+  roleTextCustomer: { color: colors.textSecondary },
   switchRoleBtn: {
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderColor: colors.borderLight,
@@ -229,10 +194,5 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: radius.sm,
   },
-  switchRoleBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.primaryLight,
-  },
+  switchRoleBtnText: { fontSize: 11, fontWeight: '700', color: colors.primaryLight },
 });
-

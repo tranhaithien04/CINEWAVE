@@ -5,6 +5,7 @@ import { AdminBooking, Movie, Showtime } from '../types';
 import { colors, radius, spacing } from '../constants/theme';
 import { AgeBadge } from './AgeBadge';
 import { formatVnd } from '../data/mock-data';
+import { ticketQrValue } from '../utils/ticket-qr';
 
 interface BoardingTicketProps {
   ticket: AdminBooking;
@@ -18,7 +19,8 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   PAID: { label: 'ĐÃ THANH TOÁN', color: colors.emerald },
   USED: { label: 'ĐÃ VÀO RẠP', color: colors.textMuted },
   EXPIRED: { label: 'HẾT HẠN', color: colors.rose },
-  CANCELLED: { label: 'ĐÃ HỦY', color: colors.rose },
+  CANCELLED: { label: 'CHỜ HOÀN TIỀN', color: colors.gold },
+  REFUNDED: { label: 'ĐÃ HOÀN TIỀN', color: colors.textMuted },
 };
 
 export function BoardingTicket({
@@ -112,14 +114,18 @@ export function BoardingTicket({
         <View style={styles.qrCol}>
           <View style={[styles.qrWrapper, showFullQr && styles.fullQrWrapper]}>
             <QRCode
-              value={ticket.code}
+              value={ticketQrValue(ticket)}
               size={showFullQr ? 140 : 68}
               color="#06070d"
               backgroundColor="#ffffff"
             />
           </View>
           <Text style={styles.scanLabel}>
-            {showFullQr ? 'SCAN TẠI CỔNG VÀO RẠP' : 'SCAN CHECK-IN'}
+            {ticket.status === 'CANCELLED'
+              ? 'QR HOÀN TIỀN TẠI QUẦY'
+              : showFullQr
+                ? 'SCAN TẠI CỔNG VÀO RẠP'
+                : 'SCAN CHECK-IN'}
           </Text>
         </View>
       </View>

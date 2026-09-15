@@ -22,7 +22,7 @@ const { width } = Dimensions.get('window');
 
 export function HomeScreen() {
   const navigation = useNavigation<any>();
-  const { movies } = useCatalog();
+  const { movies, loading, error, refresh } = useCatalog();
 
   const featured = movies.find((m) => m.nowShowing) || movies[0];
   const nowShowing = movies.filter((m) => m.nowShowing);
@@ -31,6 +31,24 @@ export function HomeScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {error ? (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => void refresh()}
+            style={styles.apiErrorBanner}
+          >
+            <Text style={styles.apiErrorTitle}>Không đồng bộ được dữ liệu với server</Text>
+            <Text style={styles.apiErrorDesc} numberOfLines={3}>
+              {error}
+            </Text>
+            <Text style={styles.apiErrorHint}>
+              Chạm để thử lại · hoặc vào Hồ sơ → đổi API URL (ví dụ http://192.168.2.8:4000)
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+        {loading && movies.length === 0 ? (
+          <Text style={styles.loadingHint}>Đang tải danh mục từ server…</Text>
+        ) : null}
         {/* Hero Cyber Header */}
         <View style={styles.heroSection}>
           <LinearGradient
@@ -187,6 +205,39 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: spacing.xxxl,
+  },
+  apiErrorBanner: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(244, 63, 94, 0.4)',
+    backgroundColor: 'rgba(244, 63, 94, 0.1)',
+  },
+  apiErrorTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.roseLight,
+  },
+  apiErrorDesc: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 4,
+    lineHeight: 15,
+  },
+  apiErrorHint: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.primaryLight,
+    marginTop: 8,
+  },
+  loadingHint: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    fontSize: 12,
+    color: colors.textMuted,
   },
   heroSection: {
     paddingHorizontal: spacing.lg,

@@ -14,6 +14,8 @@ import { useAuth } from '../context/auth-context';
 import { colors, radius, spacing } from '../constants/theme';
 import { GlassCard } from '../components/GlassCard';
 import { NeonButton } from '../components/NeonButton';
+import { GoogleAuthButton } from '../components/GoogleAuthButton';
+import { AuthUser } from '../types';
 
 export function RegisterScreen() {
   const navigation = useNavigation<any>();
@@ -24,6 +26,12 @@ export function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const finishAuth = (authUser: AuthUser) => {
+    Alert.alert('Thành công', `Chào mừng ${authUser.fullName || 'bạn'} đến CineWave!`, [
+      { text: 'Bắt đầu', onPress: () => navigation.navigate('MainTabs') },
+    ]);
+  };
 
   const handleRegister = async () => {
     if (!fullName.trim() || !email.trim() || !password.trim()) {
@@ -58,7 +66,7 @@ export function RegisterScreen() {
         return;
       }
       Alert.alert('Thành công', 'Đã tạo tài khoản CineWave mới!', [
-        { text: 'Bắt đầu', onPress: () => navigation.navigate('Home') },
+        { text: 'Bắt đầu', onPress: () => navigation.navigate('MainTabs') },
       ]);
     } catch (err: any) {
       Alert.alert('Đăng ký thất bại', err?.message || 'Email này có thể đã được sử dụng.');
@@ -137,6 +145,14 @@ export function RegisterScreen() {
             onPress={() => void handleRegister()}
             style={{ marginTop: spacing.lg }}
           />
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>hoặc</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <GoogleAuthButton label="Đăng ký với Google" onSuccess={finishAuth} />
 
           <View style={styles.switchRow}>
             <Text style={styles.switchText}>Đã có tài khoản? </Text>
@@ -225,6 +241,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: colors.primaryLight,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.md,
+    gap: spacing.sm,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  dividerText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
   },
 });
 

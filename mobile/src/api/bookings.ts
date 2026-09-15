@@ -3,38 +3,30 @@ import { AdminBooking } from '../types';
 
 export type Booking = AdminBooking & {
   holdExpiresAt?: string | null;
+  paymentCode?: string | null;
+  paymentExpiresAt?: string | null;
+  paymentProvider?: 'SEPAY' | 'MOCK' | null;
 };
 
-export async function holdSeats(body: {
+export function holdSeats(body: {
   showtimeId: string;
   movieSlug: string;
   seats: string[];
   total: number;
-}): Promise<{ booking: Booking }> {
-  try {
-    return await api<{ booking: Booking }>('/bookings/hold', {
-      method: 'POST',
-      body,
-    });
-  } catch (err: any) {
-    // Return mock booking if server unavailable
-    const fallbackBooking: Booking = {
-      id: `bk-${Date.now()}`,
-      code: `CW-${Math.floor(1000 + Math.random() * 9000)}-M`,
-      userEmail: 'demo@cinewave.vn',
-      movieSlug: body.movieSlug,
-      showtimeId: body.showtimeId,
-      seats: body.seats,
-      total: body.total,
-      status: 'HELD',
-      createdAt: new Date().toISOString(),
-      holdExpiresAt: new Date(Date.now() + 8 * 60 * 1000).toISOString(),
-    };
-    return { booking: fallbackBooking };
-  }
+}) {
+  return api<{ booking: Booking }>('/bookings/hold', {
+    method: 'POST',
+    body,
+  });
 }
 
-export async function fetchBooking(id: string): Promise<{ booking: Booking }> {
+export function fetchBooking(id: string) {
   return api<{ booking: Booking }>(`/bookings/${id}`);
 }
 
+export function updateBookingConcessions(id: string, items: Array<{ id: string; qty: number }>) {
+  return api<{ booking: Booking }>(`/bookings/${id}/concessions`, {
+    method: 'PATCH',
+    body: { items },
+  });
+}

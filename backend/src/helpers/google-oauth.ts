@@ -25,10 +25,10 @@ export function createGoogleOAuthState() {
   return randomBytes(24).toString("hex");
 }
 
-export function buildGoogleAuthUrl(state: string) {
+export function buildGoogleAuthUrl(state: string, redirectUri?: string) {
   const params = new URLSearchParams({
     client_id: requiredEnv("GOOGLE_CLIENT_ID"),
-    redirect_uri: requiredEnv("GOOGLE_CALLBACK_URL"),
+    redirect_uri: redirectUri?.trim() || requiredEnv("GOOGLE_CALLBACK_URL"),
     response_type: "code",
     scope: "openid email profile",
     access_type: "online",
@@ -39,6 +39,16 @@ export function buildGoogleAuthUrl(state: string) {
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }
 
+/** Prefer LAN host from the incoming request so phones never redirect to localhost. */
+export function resolveGoogleRedirectUri(req: { protocol?: string; get: (name: string) => string | undefined }, forMobile: boolean) {
+  // Mobile WebView rewrites localhost → LAN IP, so keep the Console-registered localhost callback.
+  if (forMobile) {
+    return requiredEnv("GOOGLE_CALLBACK_URL");
+  }
+
+  return requiredEnv("GOOGLE_CALLBACK_URL");
+}
+
 export function safeNextPath(raw: unknown) {
   if (typeof raw !== "string") return "/";
   const next = raw.trim();
@@ -46,12 +56,29 @@ export function safeNextPath(raw: unknown) {
   return next;
 }
 
-export async function exchangeGoogleCode(code: string): Promise<GoogleProfile> {
+/** Redirect URIs allowed when mobile exchanges an auth code (not the web callback URL). */
+export function isAllowedMobileGoogleRedirectUri(raw: string) {
+  const uri = raw.trim();
+  if (!uri) return false;
+  if (uri.startsWith("cinewave://")) return true;
+  try {
+    const url = new URL(uri);
+    if (url.protocol === "exp:" || url.protocol === "exps:") return true;
+    if (url.hostname === "auth.expo.io") return true;
+    if (url.hostname === "127.0.0.1" || url.hostname === "localhost") return true;
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+export async function exchangeGoogleCode(code: string, redirectUri?: string): Promise<GoogleProfile> {
+  const redirect = redirectUri?.trim() || requiredEnv("GOOGLE_CALLBACK_URL");
   const body = new URLSearchParams({
     code,
     client_id: requiredEnv("GOOGLE_CLIENT_ID"),
     client_secret: requiredEnv("GOOGLE_CLIENT_SECRET"),
-    redirect_uri: requiredEnv("GOOGLE_CALLBACK_URL"),
+    redirect_uri: redirect,
     grant_type: "authorization_code",
   });
 

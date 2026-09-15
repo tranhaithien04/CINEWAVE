@@ -1,44 +1,52 @@
 import { api } from './client';
-import { Movie, Showtime } from '../types';
-import { mockMovies, mockShowtimes } from '../data/mock-data';
+import { ConcessionItem, Movie, Seat, Showtime } from '../types';
+
+export type SimilarMovie = {
+  tmdbId: number;
+  title: string;
+  posterUrl: string | null;
+  year: string | null;
+  slug?: string;
+  imdbRating?: number;
+};
+
+function normalizeSeat(raw: Seat & { status?: string; state?: string }): Seat {
+  const state = (raw.state ?? raw.status ?? 'AVAILABLE') as Seat['state'];
+  return { ...raw, state };
+}
 
 export async function fetchMovies(): Promise<Movie[]> {
-  try {
-    const res = await api<{ movies: Movie[] }>('/movies');
-    return res.movies;
-  } catch {
-    return mockMovies;
-  }
+  const res = await api<{ movies: Movie[] }>('/movies');
+  return res.movies;
 }
 
 export async function fetchMovieBySlug(slug: string): Promise<Movie | null> {
-  try {
-    const res = await api<{ movie: Movie }>(`/movies/${slug}`);
-    return res.movie;
-  } catch {
-    return mockMovies.find((m) => m.slug === slug) || null;
-  }
+  const res = await api<{ movie: Movie }>(`/movies/${slug}`);
+  return res.movie;
 }
 
 export async function fetchShowtimes(movieSlug?: string): Promise<Showtime[]> {
-  try {
-    const query = movieSlug ? `?movieSlug=${encodeURIComponent(movieSlug)}` : '';
-    const res = await api<{ showtimes: Showtime[] }>(`/showtimes${query}`);
-    return res.showtimes;
-  } catch {
-    if (movieSlug) {
-      return mockShowtimes.filter((s) => s.movieSlug === movieSlug);
-    }
-    return mockShowtimes;
-  }
+  const query = movieSlug ? `?movieSlug=${encodeURIComponent(movieSlug)}` : '';
+  const res = await api<{ showtimes: Showtime[] }>(`/showtimes${query}`);
+  return res.showtimes;
 }
 
 export async function fetchShowtimeById(id: string): Promise<Showtime | null> {
-  try {
-    const res = await api<{ showtime: Showtime }>(`/showtimes/${id}`);
-    return res.showtime;
-  } catch {
-    return mockShowtimes.find((s) => s.id === id) || null;
-  }
+  const res = await api<{ showtime: Showtime }>(`/showtimes/${id}`);
+  return res.showtime;
 }
 
+export async function fetchShowtimeSeats(id: string): Promise<Seat[]> {
+  const res = await api<{ seats: Seat[] }>(`/showtimes/${encodeURIComponent(id)}/seats`);
+  return (res.seats ?? []).map(normalizeSeat);
+}
+
+export async function fetchConcessions(): Promise<ConcessionItem[]> {
+  const res = await api<{ items: ConcessionItem[] }>('/concessions');
+  return res.items;
+}
+
+export async function fetchSimilarMovies(slug: string): Promise<SimilarMovie[]> {
+  const res = await api<{ movies: SimilarMovie[] }>(`/movies/${encodeURIComponent(slug)}/similar`);
+  return res.movies;
+}

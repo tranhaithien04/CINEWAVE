@@ -34,16 +34,25 @@ export type Showtime = {
 
 export type SeatType = 'STANDARD' | 'VIP' | 'COUPLE';
 
-export type SeatStatus = 'AVAILABLE' | 'HELD' | 'SOLD';
+export type SeatState = 'AVAILABLE' | 'HELD' | 'SOLD' | 'BLOCKED' | 'MINE_HELD';
 
 export type Seat = {
   id: string;
   row: string;
   number: number;
   type: SeatType;
-  status: SeatStatus;
+  state: SeatState;
   heldUntil?: string | null;
 };
+
+export type ConcessionLine = {
+  id: string;
+  qty: number;
+  name: string;
+  unitPrice: number;
+};
+
+export type TicketQrPayload = { code: string; sig: string; text: string };
 
 export type UserRole = 'CUSTOMER' | 'STAFF' | 'ADMIN';
 
@@ -52,6 +61,7 @@ export type AuthUser = {
   email: string;
   fullName: string | null;
   role: UserRole;
+  emailVerified?: boolean;
 };
 
 export type BookingStatus =
@@ -78,6 +88,49 @@ export type AdminBooking = {
   status: BookingStatus;
   createdAt: string;
   holdExpiresAt?: string | null;
+  seatTotal?: number;
+  concessionTotal?: number;
+  concessions?: ConcessionLine[];
+  paymentCode?: string | null;
+  paymentExpiresAt?: string | null;
+  paymentProvider?: 'SEPAY' | 'MOCK' | null;
+  checkedInAt?: string | null;
+  cancelledAt?: string | null;
+  refundExpiresAt?: string | null;
+  refundedAt?: string | null;
+  canCancel?: boolean;
+  canReschedule?: boolean;
+  qr?: TicketQrPayload | null;
+  refundQr?: TicketQrPayload | null;
+};
+
+export type ConcessionItem = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+};
+
+export type PaymentInfo = {
+  provider: 'SEPAY' | 'MOCK';
+  qrUrl: string;
+  bank: string;
+  bankLabel: string;
+  accountNumber: string;
+  accountName: string;
+  amount: number;
+  content: string;
+  expiresAt: string;
+};
+
+export type TicketInspectResult = {
+  ticket: AdminBooking;
+  validForEntry: boolean;
+  validForRefund?: boolean;
+  kind?: 'ticket' | 'refund';
+  verdict: 'VALID' | 'USED' | 'UNPAID' | 'CANCELLED' | 'REFUND_PENDING' | 'REFUNDED';
+  message: string;
+  signed?: boolean;
 };
 
 export type NotificationItem = {
@@ -96,7 +149,7 @@ export type AgeVerificationResult = {
   passed: boolean;
   requiredAge: number;
   computedAge: number | null;
-  confidence: number;
+  confidence: number | null;
   verificationId: string;
   idMasked: string | null;
   message: string;

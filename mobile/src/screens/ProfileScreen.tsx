@@ -70,9 +70,21 @@ export function ProfileScreen() {
                 <Text style={styles.userEmail}>{user.email}</Text>
                 <View style={styles.roleBadge}>
                   <Text style={styles.roleBadgeText}>
-                    {user.role === 'ADMIN' ? '👑 QUẢN TRỊ VIÊN' : '✦ THÀNH VIÊN VIP'}
+                    {user.role === 'ADMIN'
+                      ? '👑 QUẢN TRỊ VIÊN'
+                      : user.role === 'STAFF'
+                        ? '🎫 NHÂN VIÊN SOÁT VÉ'
+                        : '✦ THÀNH VIÊN VIP'}
                   </Text>
                 </View>
+                {user.emailVerified === false ? (
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('VerifyEmail', { email: user.email })}
+                    style={styles.verifyHint}
+                  >
+                    <Text style={styles.verifyHintText}>⚠ Email chưa xác minh — bấm để gửi lại</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
             </View>
           </GlassCard>
@@ -99,6 +111,23 @@ export function ProfileScreen() {
               />
             </View>
           </GlassCard>
+        )}
+
+        {user?.role === 'STAFF' && (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('StaffScan')}
+            style={styles.staffEntryCard}
+          >
+            <View style={styles.adminIconBox}>
+              <Text style={styles.adminIconText}>🎫</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.staffTitle}>Soát vé & hoàn tiền</Text>
+              <Text style={styles.adminDesc}>Quét hoặc dán mã QR vé khách tại cổng vào rạp.</Text>
+            </View>
+            <Text style={styles.adminArrow}>→</Text>
+          </TouchableOpacity>
         )}
 
         {/* Admin Suite Entry (For Admin users) */}
@@ -276,6 +305,24 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.goldLight,
     letterSpacing: 0.5,
+  },
+  verifyHint: { marginTop: 8 },
+  verifyHintText: { fontSize: 10, fontWeight: '700', color: colors.roseLight },
+  staffEntryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+    borderColor: 'rgba(6, 182, 212, 0.35)',
+    borderWidth: 1.5,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    gap: spacing.md,
+  },
+  staffTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: colors.primaryLight,
   },
   unauthCard: {
     padding: spacing.lg,

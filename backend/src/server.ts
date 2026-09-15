@@ -26,6 +26,6 @@ await ensureAppSeed();
 
 startBackgroundJobs();
 
-app.listen(port, () => {
-  console.log(`CINEWAVE API listening on :${port}`);
+app.listen(port, "0.0.0.0", () => {
+  console.log(`CINEWAVE API listening on 0.0.0.0:${port}`);
 });

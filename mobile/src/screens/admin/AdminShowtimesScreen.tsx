@@ -17,7 +17,7 @@ import { colors, radius, spacing } from '../../constants/theme';
 import { GlassCard } from '../../components/GlassCard';
 import { NeonButton } from '../../components/NeonButton';
 import { formatVnd } from '../../data/mock-data';
-import { createShowtime, deleteShowtime } from '../../api/admin';
+import { createShowtime, deleteShowtime, closeAdminShowtime } from '../../api/admin';
 
 export function AdminShowtimesScreen() {
   const navigation = useNavigation<any>();
@@ -49,6 +49,24 @@ export function AdminShowtimesScreen() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleClose = (s: Showtime) => {
+    Alert.alert('Đóng bán suất', `Đóng suất ${s.room} tại ${s.cinema}?`, [
+      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Đóng bán',
+        onPress: async () => {
+          try {
+            await closeAdminShowtime(s.id);
+            await refresh();
+            Alert.alert('Đã đóng', 'Suất chiếu đã đóng bán.');
+          } catch (err: any) {
+            Alert.alert('Lỗi', err?.message || 'Không đóng được suất');
+          }
+        },
+      },
+    ]);
   };
 
   const handleDelete = (s: Showtime) => {
@@ -114,9 +132,18 @@ export function AdminShowtimesScreen() {
                     <Text style={styles.priceText}>{formatVnd(item.priceBase)}</Text>
                   </View>
 
-                  <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteBtn}>
-                    <Text style={styles.deleteBtnText}>Xóa</Text>
-                  </TouchableOpacity>
+                  <View style={{ gap: 8 }}>
+                    {!item.closed ? (
+                      <TouchableOpacity onPress={() => handleClose(item)} style={styles.deleteBtn}>
+                        <Text style={[styles.deleteBtnText, { color: colors.goldLight }]}>Đóng</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={{ color: colors.roseLight, fontSize: 10, fontWeight: '800' }}>CLOSED</Text>
+                    )}
+                    <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteBtn}>
+                      <Text style={styles.deleteBtnText}>Xóa</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </GlassCard>
             );
