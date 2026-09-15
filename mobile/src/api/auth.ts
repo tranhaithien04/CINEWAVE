@@ -21,17 +21,29 @@ type RegisterResponse =
       message?: string;
     };
 
-export async function loginApi(input: { email: string; password: string }): Promise<AuthUser> {
-  const res = await api<AuthResponse>('/auth/login', {
-    method: 'POST',
-    body: input,
-  });
+async function persistAuthResponse(res: AuthResponse): Promise<AuthUser> {
   if (res.tokens) {
     await AsyncStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, res.tokens.accessToken);
     await AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, res.tokens.refreshToken);
   }
   await AsyncStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(res.user));
   return res.user;
+}
+
+export async function loginApi(input: { email: string; password: string }): Promise<AuthUser> {
+  const res = await api<AuthResponse>('/auth/login', {
+    method: 'POST',
+    body: input,
+  });
+  return persistAuthResponse(res);
+}
+
+export async function redeemGoogleMobileTicketApi(ticket: string): Promise<AuthUser> {
+  const res = await api<AuthResponse>('/auth/google/mobile/ticket', {
+    method: 'POST',
+    body: { ticket },
+  });
+  return persistAuthResponse(res);
 }
 
 export async function registerApi(input: {
@@ -79,4 +91,24 @@ export async function getMeApi(): Promise<AuthUser> {
   const res = await api<AuthResponse>('/auth/me');
   await AsyncStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(res.user));
   return res.user;
+}
+
+export async function verifyEmailApi(token: string): Promise<AuthUser> {
+  const res = await api<AuthResponse & { verified?: boolean }>('/auth/verify-email', {
+    method: 'POST',
+    body: { token },
+  });
+  if ('tokens' in res && res.tokens) {
+    await AsyncStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, res.tokens.accessToken);
+    await AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, res.tokens.refreshToken);
+  }
+  await AsyncStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(res.user));
+  return res.user;
+}
+
+export function resendVerificationEmail(email: string) {
+  return api<{ ok: boolean; message: string }>('/auth/resend-verification', {
+    method: 'POST',
+    body: { email },
+  });
 }

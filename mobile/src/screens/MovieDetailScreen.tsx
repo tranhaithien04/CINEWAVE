@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,24 +8,55 @@ import {
   TouchableOpacity,
   Dimensions,
   Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { WebView } from 'react-native-webview';
 import { useCatalog } from '../context/catalog-context';
 import { colors, radius, spacing } from '../constants/theme';
 import { AgeBadge } from '../components/AgeBadge';
 import { NeonButton } from '../components/NeonButton';
 import { GlassCard } from '../components/GlassCard';
 import { formatVnd } from '../data/mock-data';
+import { fetchSimilarMovies, SimilarMovie } from '../api/catalog';
 
 const { width } = Dimensions.get('window');
+
+function toEmbedTrailerUrl(url?: string | null): string | null {
+  if (!url?.trim()) return null;
+  const raw = url.trim();
+  try {
+    const parsed = new URL(raw);
+    const host = parsed.hostname.replace(/^www\./, '');
+    if (host === 'youtu.be') {
+      const id = parsed.pathname.split('/').filter(Boolean)[0];
+      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&rel=0` : null;
+    }
+    if (host.includes('youtube.com')) {
+      const id = parsed.searchParams.get('v') || parsed.pathname.split('/').filter(Boolean).pop();
+      if (parsed.pathname.includes('/embed/') && id) {
+        return `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
+      }
+      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&rel=0` : null;
+    }
+    return raw;
+  } catch {
+    return raw;
+  }
+}
 
 const dayKeyFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
 const dayLabelFmt = new Intl.DateTimeFormat('vi-VN', {
   weekday: 'short',
   day: '2-digit',
   month: '2-digit',
+  timeZone: 'Asia/Ho_Chi_Minh',
+});
+const showTimeFmt = new Intl.DateTimeFormat('vi-VN', {
+  hour: '2-digit',
+  minute: '2-digit',
   timeZone: 'Asia/Ho_Chi_Minh',
 });
 
@@ -45,6 +76,14 @@ function formatDay(iso: string) {
   }
 }
 
+function formatShowTime(iso: string) {
+  try {
+    return showTimeFmt.format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
 export function MovieDetailScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
@@ -57,9 +96,45 @@ export function MovieDetailScreen() {
   const days = useMemo(() => [...new Set(showtimes.map((s) => dayKey(s.startsAt)))], [showtimes]);
   const [selectedDay, setSelectedDay] = useState(days[0] || '');
   const [trailerOpen, setTrailerOpen] = useState(false);
+  const [similar, setSimilar] = useState<SimilarMovie[]>([]);
+
+  useEffect(() => {
+    if (days.length && !days.includes(selectedDay)) {
+      setSelectedDay(days[0] ?? '');
+    }
+  }, [days, selectedDay]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!movie?.tmdbId) {
+      setSimilar([]);
+      return;
+    }
+    void fetchSimilarMovies(movie.slug).then((data) => {
+      if (!cancelled) setSimilar(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [movie?.slug, movie?.tmdbId]);
 
   const visibleShowtimes = showtimes.filter((s) => dayKey(s.startsAt) === (selectedDay || days[0]));
   const similarMovies = movies.filter((m) => m.slug !== movie?.slug).slice(0, 4);
+  const similarFromApi = similar.filter((item) => item.slug && item.slug !== movie?.slug);
+  const similarList =
+    similarFromApi.length > 0
+      ? similarFromApi.map((item) => ({
+          key: String(item.tmdbId),
+          slug: item.slug!,
+          title: item.title,
+          posterUrl: item.posterUrl || '',
+        }))
+      : similarMovies.map((sim) => ({
+          key: sim.id,
+          slug: sim.slug,
+          title: sim.title,
+          posterUrl: sim.posterUrl,
+        }));
 
   if (!movie) {
     return (
@@ -133,7 +208,13 @@ export function MovieDetailScreen() {
                 title="▶ Xem Trailer"
                 variant="rose"
                 size="sm"
-                onPress={() => setTrailerOpen(true)}
+                onPress={() => {
+                  if (!toEmbedTrailerUrl(movie.trailerUrl)) {
+                    Alert.alert('Chưa có trailer', 'Phim này chưa có đường dẫn trailer.');
+                    return;
+                  }
+                  setTrailerOpen(true);
+                }}
                 style={{ marginTop: spacing.sm, alignSelf: 'flex-start' }}
               />
             </View>
@@ -195,8 +276,7 @@ export function MovieDetailScreen() {
               </View>
             ) : (
               visibleShowtimes.map((item) => {
-                const showDate = new Date(item.startsAt);
-                const timeStr = showDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                const timeStr = formatShowTime(item.startsAt);
                 return (
                   <GlassCard key={item.id} style={styles.showtimeCard} highlight>
                     <View style={styles.showtimeLeft}>
@@ -226,18 +306,22 @@ export function MovieDetailScreen() {
         </View>
 
         {/* Similar Movies */}
-        {similarMovies.length > 0 && (
+        {similarList.length > 0 && (
           <View style={styles.similarSection}>
             <Text style={styles.sectionTitle}>PHIM TƯƠNG TỰ</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.lg }}>
-              {similarMovies.map((sim) => (
+              {similarList.map((sim) => (
                 <TouchableOpacity
-                  key={sim.id}
+                  key={sim.key}
                   activeOpacity={0.8}
                   onPress={() => navigation.push('MovieDetail', { slug: sim.slug })}
                   style={styles.similarCard}
                 >
-                  <Image source={{ uri: sim.posterUrl }} style={styles.similarPoster} />
+                  {sim.posterUrl ? (
+                    <Image source={{ uri: sim.posterUrl }} style={styles.similarPoster} />
+                  ) : (
+                    <View style={[styles.similarPoster, styles.similarPosterPlaceholder]} />
+                  )}
                   <Text style={styles.similarTitle} numberOfLines={1}>
                     {sim.title}
                   </Text>
@@ -249,17 +333,24 @@ export function MovieDetailScreen() {
       </ScrollView>
 
       {/* Trailer Modal */}
-      <Modal visible={trailerOpen} transparent animationType="fade">
+      <Modal visible={trailerOpen} transparent animationType="fade" onRequestClose={() => setTrailerOpen(false)}>
         <View style={styles.trailerOverlay}>
           <View style={styles.trailerBox}>
             <Text style={styles.trailerTitle}>🎬 Trailer: {movie.title}</Text>
-            <View style={styles.trailerPlaceholder}>
-              <Text style={styles.trailerPlaceholderIcon}>▶️</Text>
-              <Text style={styles.trailerPlaceholderText}>
-                Đang phát Trailer Full HD CineWave IMAX
-              </Text>
-              <Text style={styles.trailerUrlText}>{movie.trailerUrl || 'https://cinewave.vn/trailers'}</Text>
-            </View>
+            {toEmbedTrailerUrl(movie.trailerUrl) ? (
+              <WebView
+                style={styles.trailerWebView}
+                source={{ uri: toEmbedTrailerUrl(movie.trailerUrl)! }}
+                allowsFullscreenVideo
+                mediaPlaybackRequiresUserAction={false}
+                javaScriptEnabled
+                domStorageEnabled
+              />
+            ) : (
+              <View style={styles.trailerPlaceholder}>
+                <Text style={styles.trailerPlaceholderText}>Không phát được trailer.</Text>
+              </View>
+            )}
             <NeonButton
               title="Đóng trailer"
               variant="secondary"
@@ -551,6 +642,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     resizeMode: 'cover',
   },
+  similarPosterPlaceholder: {
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
   similarTitle: {
     fontSize: 11,
     fontWeight: '700',
@@ -586,6 +680,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.md,
+  },
+  trailerWebView: {
+    width: '100%',
+    height: 220,
+    borderRadius: radius.md,
+    backgroundColor: '#000',
+    overflow: 'hidden',
   },
   trailerPlaceholderIcon: {
     fontSize: 40,

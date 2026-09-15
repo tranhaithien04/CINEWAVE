@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
+    "scheme": "cinewave",
     "ios": {
       "supportsTablet": true
     },
@@ -13,7 +14,21 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#06070d"
-      }
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "data": [
+            {
+              "scheme": "cinewave",
+              "host": "oauth",
+              "pathPrefix": "/google"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -24,6 +39,13 @@
         {
           "photosPermission": "CineWave cần quyền truy cập ảnh để bạn có thể tải lên ảnh CCCD xác minh độ tuổi.",
           "cameraPermission": "CineWave cần quyền sử dụng máy ảnh để chụp trực tiếp thẻ CCCD."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "CineWave cần quyền camera để quét mã QR vé tại cổng soát vé.",
+          "barcodeScannerEnabled": true
         }
       ],
       "expo-font",

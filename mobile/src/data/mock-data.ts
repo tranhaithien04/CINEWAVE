@@ -151,10 +151,10 @@ export function buildSeatMap(): Seat[] {
         type = 'COUPLE';
       }
 
-      let status: Seat['status'] = 'AVAILABLE';
+      let state: Seat['state'] = 'AVAILABLE';
       // Mock some occupied seats
       if ((row === 'C' && (num === 4 || num === 5)) || (row === 'F' && (num === 3 || num === 4))) {
-        status = 'SOLD';
+        state = 'SOLD';
       }
 
       list.push({
@@ -162,7 +162,7 @@ export function buildSeatMap(): Seat[] {
         row,
         number: num,
         type,
-        status,
+        state,
       });
     }
   }

@@ -42,11 +42,11 @@ export function AdminDashboardScreen() {
   };
 
   const stats = [
-    { label: 'Phim Catalog', value: overview?.movies ?? 6, icon: '🎬', color: colors.primary },
-    { label: 'Suất Chiếu', value: overview?.showtimes ?? 7, icon: '⏱️', color: '#3b82f6' },
-    { label: 'Đơn Hàng', value: overview?.bookings ?? 28, icon: '🎫', color: colors.gold },
-    { label: 'Người Dùng', value: overview?.users ?? 152, icon: '👥', color: colors.emerald },
-    { label: 'Tổng Doanh Thu', value: formatVnd(overview?.revenue ?? 8450000), icon: '💳', color: '#ec4899', isMoney: true },
+    { label: 'Phim Catalog', value: overview?.movies ?? '—', icon: '🎬', color: colors.primary },
+    { label: 'Suất Chiếu', value: overview?.showtimes ?? '—', icon: '⏱️', color: '#3b82f6' },
+    { label: 'Đơn Hàng', value: overview?.bookings ?? overview?.tickets ?? '—', icon: '🎫', color: colors.gold },
+    { label: 'Người Dùng', value: overview?.users ?? '—', icon: '👥', color: colors.emerald },
+    { label: 'Tổng Doanh Thu', value: formatVnd(overview?.revenue ?? 0), icon: '💳', color: '#ec4899', isMoney: true },
   ];
 
   return (
@@ -90,55 +90,31 @@ export function AdminDashboardScreen() {
         {/* Navigation Quick Actions to other Admin modules */}
         <Text style={styles.sectionHeading}>QUẢN LÝ HỆ THỐNG</Text>
         <View style={styles.modulesGrid}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('AdminBookings')}
-            style={styles.moduleBtn}
-          >
-            <Text style={styles.moduleIcon}>📑</Text>
-            <Text style={styles.moduleTitle}>Đơn Hàng</Text>
-            <Text style={styles.moduleDesc}>Hủy / Hoàn tiền</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('AdminMovies')}
-            style={styles.moduleBtn}
-          >
-            <Text style={styles.moduleIcon}>🎥</Text>
-            <Text style={styles.moduleTitle}>Quản Lý Phim</Text>
-            <Text style={styles.moduleDesc}>Thêm / Sửa / Xóa</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('AdminShowtimes')}
-            style={styles.moduleBtn}
-          >
-            <Text style={styles.moduleIcon}>🕒</Text>
-            <Text style={styles.moduleTitle}>Suất Chiếu</Text>
-            <Text style={styles.moduleDesc}>Lịch chiếu rạp</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('AdminTickets')}
-            style={styles.moduleBtn}
-          >
-            <Text style={styles.moduleIcon}>🎟️</Text>
-            <Text style={styles.moduleTitle}>Soát Vé Cổng</Text>
-            <Text style={styles.moduleDesc}>Quét / Check-in</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('AdminUsers')}
-            style={styles.moduleBtn}
-          >
-            <Text style={styles.moduleIcon}>👥</Text>
-            <Text style={styles.moduleTitle}>Người Dùng</Text>
-            <Text style={styles.moduleDesc}>Phân quyền role</Text>
-          </TouchableOpacity>
+          {[
+            { route: 'AdminBookings', icon: '📑', title: 'Đơn Hàng', desc: 'Hủy / Hoàn tiền' },
+            { route: 'AdminMovies', icon: '🎥', title: 'Quản Lý Phim', desc: 'Thêm / Sync / Xóa' },
+            { route: 'AdminShowtimes', icon: '🕒', title: 'Suất Chiếu', desc: 'Lịch / Đóng bán' },
+            { route: 'AdminTickets', icon: '🎟️', title: 'Soát Vé Cổng', desc: 'Check-in' },
+            { route: 'AdminUsers', icon: '👥', title: 'Người Dùng', desc: 'CUSTOMER/STAFF/ADMIN' },
+            { route: 'AdminCinemas', icon: '🏛️', title: 'Rạp', desc: 'Danh sách cụm rạp' },
+            { route: 'AdminRooms', icon: '🪑', title: 'Phòng & Ghế', desc: 'Khóa ghế theo phòng' },
+            { route: 'AdminConcessions', icon: '🍿', title: 'Bắp nước', desc: 'Combo F&B' },
+            { route: 'AdminAgeVerifications', icon: '🪪', title: 'CCCD Verify', desc: 'Lịch sử tuổi' },
+            { route: 'AdminReports', icon: '📈', title: 'Báo cáo', desc: 'Doanh thu chi tiết' },
+            { route: 'AdminNotifications', icon: '📢', title: 'Broadcast', desc: 'Gửi thông báo' },
+            { route: 'AdminSystem', icon: '⚙️', title: 'Hệ thống', desc: 'Cấu hình / status' },
+          ].map((mod) => (
+            <TouchableOpacity
+              key={mod.route}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate(mod.route)}
+              style={styles.moduleBtn}
+            >
+              <Text style={styles.moduleIcon}>{mod.icon}</Text>
+              <Text style={styles.moduleTitle}>{mod.title}</Text>
+              <Text style={styles.moduleDesc}>{mod.desc}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         {/* Revenue Ranking by Movie */}

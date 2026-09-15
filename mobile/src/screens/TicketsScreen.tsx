@@ -14,7 +14,6 @@ import { useCatalog } from '../context/catalog-context';
 import { AdminBooking } from '../types';
 import { colors, radius, spacing } from '../constants/theme';
 import { fetchMyTickets } from '../api/tickets';
-import { mockTickets } from '../data/mock-data';
 import { BoardingTicket } from '../components/BoardingTicket';
 import { NeonButton } from '../components/NeonButton';
 
@@ -28,11 +27,16 @@ export function TicketsScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const loadTickets = async () => {
+    if (!user) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     try {
       const data = await fetchMyTickets();
       setTickets(data);
     } catch {
-      setTickets(mockTickets);
+      setTickets([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -41,7 +45,7 @@ export function TicketsScreen() {
 
   useEffect(() => {
     void loadTickets();
-  }, []);
+  }, [user]);
 
   const onRefresh = () => {
     setRefreshing(true);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -6,33 +6,47 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/auth-context';
 import { NotificationItem } from '../types';
 import { colors, radius, spacing } from '../constants/theme';
 import { fetchNotifications, markAllNotificationsRead, markNotificationRead } from '../api/notifications';
-import { NeonButton } from '../components/NeonButton';
+import { ApiError } from '../api/client';
 
 export function NotificationsScreen() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadNotifs = async () => {
+  const loadNotifs = useCallback(async () => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
     try {
       const data = await fetchNotifications();
       setNotifications(data);
-    } catch {
-      // Keep state
+      setError(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Không tải được thông báo');
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [user]);
 
-  useEffect(() => {
-    void loadNotifs();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void loadNotifs();
+      const timer = setInterval(() => {
+        void loadNotifs();
+      }, 12000);
+      return () => clearInterval(timer);
+    }, [loadNotifs]),
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -40,27 +54,46 @@ export function NotificationsScreen() {
   };
 
   const handleMarkAllRead = async () => {
-    await markAllNotificationsRead();
-    setNotifications((prev) =>
-      prev.map((item) => ({ ...item, readAt: new Date().toISOString() }))
-    );
+    try {
+      await markAllNotificationsRead();
+      setNotifications((prev) =>
+        prev.map((item) => ({ ...item, readAt: item.readAt || new Date().toISOString() })),
+      );
+    } catch (err) {
+      Alert.alert('Lỗi', err instanceof ApiError ? err.message : 'Không đánh dấu được');
+    }
   };
 
   const handleItemPress = async (item: NotificationItem) => {
     if (!item.readAt) {
-      await markNotificationRead(item.id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === item.id ? { ...n, readAt: new Date().toISOString() } : n))
-      );
+      try {
+        await markNotificationRead(item.id);
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === item.id ? { ...n, readAt: new Date().toISOString() } : n)),
+        );
+      } catch {
+        /* ignore */
+      }
     }
   };
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.title}>Thông Báo</Text>
+          <Text style={styles.emptyDesc}>Đăng nhập để xem hộp thư thông báo thật từ server.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.eyebrow}>INBOX</Text>
+            <Text style={styles.eyebrow}>INBOX · LIVE POLL</Text>
             <Text style={styles.title}>Thông Báo</Text>
           </View>
 
@@ -68,6 +101,8 @@ export function NotificationsScreen() {
             <Text style={styles.markReadText}>Đã đọc tất cả</Text>
           </TouchableOpacity>
         </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <FlatList
           data={notifications}
@@ -150,6 +185,12 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     marginTop: 2,
   },
+  error: {
+    color: colors.roseLight,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    fontSize: 12,
+  },
   markReadBtn: {
     paddingVertical: 4,
   },
@@ -225,4 +266,3 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
-

@@ -11,9 +11,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/auth-context';
+import { ApiError } from '../api/client';
 import { colors, radius, spacing } from '../constants/theme';
 import { GlassCard } from '../components/GlassCard';
 import { NeonButton } from '../components/NeonButton';
+import { GoogleAuthButton } from '../components/GoogleAuthButton';
+import { AuthUser } from '../types';
 
 export function LoginScreen() {
   const navigation = useNavigation<any>();
@@ -24,6 +27,18 @@ export function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const finishAuth = (authUser: AuthUser) => {
+    if (authUser.role === 'STAFF') {
+      navigation.navigate('StaffScan');
+      return;
+    }
+    if (authUser.role === 'ADMIN') {
+      navigation.navigate('AdminSuite');
+      return;
+    }
+    navigation.goBack();
+  };
+
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Thiếu thông tin', 'Vui lòng nhập đầy đủ Email và Mật khẩu.');
@@ -32,10 +47,14 @@ export function LoginScreen() {
 
     setLoading(true);
     try {
-      await login({ email: email.trim(), password });
-      navigation.goBack();
-    } catch (err: any) {
-      Alert.alert('Đăng nhập thất bại', err?.message || 'Email hoặc mật khẩu không chính xác.');
+      const authUser = await login({ email: email.trim(), password });
+      finishAuth(authUser);
+    } catch (err: unknown) {
+      const message = err instanceof ApiError ? err.message : 'Email hoặc mật khẩu không chính xác.';
+      Alert.alert('Đăng nhập thất bại', message);
+      if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
+        navigation.navigate('VerifyEmail', { email: email.trim() });
+      }
     } finally {
       setLoading(false);
     }
@@ -74,10 +93,16 @@ export function LoginScreen() {
                 onPress={() => fillQuickAccount('demo@cinewave.vn', 'password1')}
                 style={styles.quickBtn}
               >
-                <Text style={styles.quickBtnText}>👤 Khách Demo</Text>
+                <Text style={styles.quickBtnText}>👤 Khách</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => fillQuickAccount('admin@cinewave.vn', 'admin123')}
+                onPress={() => fillQuickAccount('staff@cinewave.vn', 'password1')}
+                style={styles.quickBtn}
+              >
+                <Text style={styles.quickBtnText}>🎫 Staff</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => fillQuickAccount('admin@cinewave.vn', 'password1')}
                 style={styles.quickBtn}
               >
                 <Text style={styles.quickBtnText}>👑 Admin</Text>
@@ -125,6 +150,18 @@ export function LoginScreen() {
             loading={loading}
             onPress={() => void handleLogin()}
             style={{ marginTop: spacing.lg }}
+          />
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>hoặc</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <GoogleAuthButton
+            onSuccess={(authUser) => {
+              finishAuth(authUser);
+            }}
           />
 
           {/* Switch to Register */}
@@ -269,6 +306,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: colors.primaryLight,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.md,
+    gap: spacing.sm,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  dividerText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
   },
 });
 

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Movie, Showtime } from '../types';
 import { fetchMovies, fetchShowtimes } from '../api/catalog';
-import { mockMovies, mockShowtimes } from '../data/mock-data';
+import { getApiUrl } from '../api/client';
 
 type CatalogContextType = {
   movies: Movie[];
@@ -17,8 +17,8 @@ type CatalogContextType = {
 const CatalogContext = createContext<CatalogContextType | undefined>(undefined);
 
 export function CatalogProvider({ children }: { children: React.ReactNode }) {
-  const [movies, setMovies] = useState<Movie[]>(mockMovies);
-  const [showtimes, setShowtimes] = useState<Showtime[]>(mockShowtimes);
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [showtimes, setShowtimes] = useState<Showtime[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +33,13 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       setShowtimes(fetchedShowtimes);
       setError(null);
     } catch (err: any) {
-      setError(err?.message || 'Không thể tải danh mục phim');
+      // Keep last successful catalog (same as web). Surface API URL so mismatch is obvious.
+      const base = getApiUrl();
+      setError(
+        err?.message
+          ? `${err.message} · API: ${base}`
+          : `Không thể tải danh mục phim · API: ${base}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -80,4 +86,3 @@ export function useCatalog() {
   }
   return context;
 }
-
