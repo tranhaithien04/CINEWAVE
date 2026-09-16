@@ -43,11 +43,6 @@ function frontendUrl(path = "/") {
 /** Web: cookies. Mobile: tokens in JSON body. Register may return pendingVerification (no session). */
 export async function register(req: Request, res: Response) {
   const result = await registerUser(req.body);
-  if ("user" in result && "tokens" in result) {
-    setAuthCookies(res, result.tokens);
-    res.status(201).json({ user: result.user, tokens: result.tokens });
-    return;
-  }
   res.status(201).json(result);
 }
 

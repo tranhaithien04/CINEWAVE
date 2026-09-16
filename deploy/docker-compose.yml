@@ -1,0 +1,44 @@
+# Chạy trên VPS (clone CINEWAVE + server-YOLO-CINEWAVE cạnh nhau):
+#   ~/cinewave/CINEWAVE/deploy/docker-compose.yml
+#   ~/cinewave/server-YOLO-CINEWAVE/
+#
+#   cd ~/cinewave/CINEWAVE/deploy
+#   cp .env.vps.example .env   # chỉnh biến
+#   docker compose up -d --build
+
+services:
+  ai:
+    build:
+      context: ../../server-YOLO-CINEWAVE
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: ../deploy/Dockerfile.backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      AI_SERVICE_URL: http://ai:8000
+      PORT: "4000"
+    ports:
+      - "127.0.0.1:4000:4000"
+    volumes:
+      - api_uploads:/app/uploads
+    depends_on:
+      ai:
+        condition: service_healthy
+
+volumes:
+  api_uploads:

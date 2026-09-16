@@ -131,7 +131,7 @@ export function AdminUsersPage() {
                       {user.role}
                     </Badge>
                     <select
-                      aria-label={`Đổi vai trò của ${user.name || user.email}`}
+                      aria-label={`Đổi vai trò của ${user.fullName || user.email}`}
                       className="h-9 rounded-xl border border-white/10 bg-zinc-900 px-3 text-xs text-white focus:border-cyan-500"
                       value={user.role}
                       onChange={(event) => void changeRole(user, event.target.value as AuthUser["role"])}

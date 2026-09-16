@@ -6,14 +6,25 @@ import { mongoStatus } from "../db/mongo.js";
 import { errorHandler } from "../middlewares/error.js";
 import { mountRoutes } from "../routes/index.js";
 
-export function createApp() {
-  const app = express();
-
-  const allowedOrigins = new Set([
+function parseCorsOrigins(): Set<string> {
+  const origins = new Set([
     process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
     "http://localhost:3000",
     "http://localhost:3001",
   ]);
+  const extra = process.env.CORS_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean) ?? [];
+  for (const origin of extra) origins.add(origin);
+  return origins;
+}
+
+export function createApp() {
+  const app = express();
+
+  if (process.env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
+
+  const allowedOrigins = parseCorsOrigins();
 
   app.use(
     cors({

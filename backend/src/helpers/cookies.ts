@@ -12,6 +12,7 @@ const baseCookie: CookieOptions = {
   sameSite: "lax",
   secure: process.env.NODE_ENV === "production",
   path: "/",
+  ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {}),
 };
 
 export function setAuthCookies(res: Response, tokens: { accessToken: string; refreshToken: string }) {
