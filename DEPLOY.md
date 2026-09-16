@@ -1,89 +1,117 @@
 # Deploy CINEWAVE
 
-Kiến trúc: **Frontend → Vercel**, **Backend + YOLO → một VPS**.
+Kiến trúc cloud khuyến nghị:
 
-## 1. VPS — Backend + YOLO
+| Thành phần | Host | URL ví dụ |
+|------------|------|-----------|
+| Frontend | Vercel | https://cinewave-tt.vercel.app |
+| Backend API | Render | https://cinewave-api.onrender.com |
+| YOLO CCCD | Render (Docker) | https://cinewave-yolo.onrender.com |
 
-### Chuẩn bị
+> YOLO (PyTorch + RapidOCR) cần **≥ 1–2 GB RAM**. Gói **Free** Render dễ OOM / cold-start rất lâu — nên dùng **Starter** trở lên cho `cinewave-yolo`.
 
-```bash
-sudo apt update && sudo apt install -y docker.io docker-compose-plugin nginx certbot python3-certbot-nginx
-sudo usermod -aG docker $USER
-```
+---
 
-Clone hai repo cạnh nhau:
+## 1. Deploy YOLO (repo `server-YOLO-CINEWAVE`)
 
-```text
-~/cinewave/
-  CINEWAVE/
-  server-YOLO-CINEWAVE/
-```
+1. Đảm bảo repo có `Dockerfile`, `weights/best.pt`, `render.yaml` (đã chuẩn bị local tại `D:\server-YOLO-CINEWAVE` — push lên GitHub).
+2. [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint** → chọn `tranhaithien04/server-YOLO-CINEWAVE`  
+   hoặc **New Web Service** → repo đó → **Docker**.
+3. Plan: **Starter** (khuyến nghị), region Singapore.
+4. Sau khi live, ghi lại URL, ví dụ `https://cinewave-yolo.onrender.com`.
+5. Kiểm tra: `GET https://cinewave-yolo.onrender.com/health`
 
-### Env & chạy Docker
+---
 
-```bash
-cd ~/cinewave/CINEWAVE/deploy
-cp .env.vps.example .env
-nano .env   # MONGODB_URI, JWT_*, NEXT_PUBLIC_APP_URL, CORS_ORIGINS, ...
-docker compose up -d --build
-curl -s http://127.0.0.1:4000/health
-```
+## 2. Deploy Backend (repo `CINEWAVE` → Render)
 
-API chỉ bind `127.0.0.1:4000`. Dùng Nginx + HTTPS ra internet:
+### Cách A — Blueprint
 
-```bash
-sudo cp nginx/cinewave-api.conf /etc/nginx/sites-available/cinewave-api
-# sửa server_name → api.yourdomain.com
-sudo ln -sf /etc/nginx/sites-available/cinewave-api /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d api.yourdomain.com
-```
+1. Push `render.yaml` (root repo CINEWAVE) lên `main`.
+2. Render → **New** → **Blueprint** → chọn `tranhaithien04/CINEWAVE`.
+3. Điền các env `sync: false` theo `deploy/.env.render.example`.
 
-Cập nhật `GOOGLE_CALLBACK_URL=https://api.yourdomain.com/auth/google/callback`.
+### Cách B — Web Service thủ công
+
+1. **New Web Service** → `tranhaithien04/CINEWAVE`
+2. **Root Directory:** `backend`
+3. **Build:** `npm ci --include=dev && npm run build`  
+   (`--include=dev` bắt buộc: không có thì thiếu `@types/*` và `tsc` fail)
+4. **Start:** `npm start`
+5. **Health Check Path:** `/health`
+
+### Env bắt buộc (Production)
+
+| Biến | Giá trị |
+|------|---------|
+| `NODE_ENV` | `production` |
+| `MONGODB_URI` | MongoDB Atlas connection string |
+| `JWT_SECRET` / `JWT_REFRESH_SECRET` | chuỗi ngẫu nhiên dài |
+| `NEXT_PUBLIC_APP_URL` | `https://cinewave-tt.vercel.app` |
+| `CORS_ORIGINS` | `https://cinewave-tt.vercel.app` |
+| `COOKIE_SAMESITE` | `none` (bắt buộc vì Vercel ≠ Render domain) |
+| `AI_SERVICE_URL` | URL YOLO ở bước 1 |
+| `AI_SERVICE_KEY` | (tuỳ chọn) khớp key nếu YOLO yêu cầu |
+| `GOOGLE_CALLBACK_URL` | `https://<api>.onrender.com/auth/google/callback` |
+| SMTP / SEPAY / OMDB / TMDB / Google | copy từ `.env` local |
+
+### Google OAuth
+
+Thêm Authorized redirect URI trong Google Cloud Console:
+
+`https://<api>.onrender.com/auth/google/callback`
 
 ### MongoDB Atlas
 
-Whitelist IP VPS (hoặc `0.0.0.0/0` tạm thời khi test).
+Render IP động → Network Access cho phép `0.0.0.0/0` (hoặc IP allowlist theo docs Render).
+
+Kiểm tra: `GET https://<api>.onrender.com/health` → `{ ok: true, db: "connected" }`
 
 ---
 
-## 2. Vercel — Frontend
+## 3. Frontend Vercel (đã deploy)
 
-1. Import repo GitHub `tranhaithien04/CINEWAVE`.
-2. **Root Directory:** `frontend`
-3. Environment variables (Production):
+Environment variables Production:
 
-   | Biến | Ví dụ |
-   |------|--------|
-   | `NEXT_PUBLIC_APP_URL` | `https://your-app.vercel.app` hoặc `https://app.yourdomain.com` |
-   | `NEXT_PUBLIC_API_URL` | `https://api.yourdomain.com` |
+| Biến | Giá trị |
+|------|---------|
+| `NEXT_PUBLIC_APP_URL` | `https://cinewave-tt.vercel.app` |
+| `NEXT_PUBLIC_API_URL` | `https://<api>.onrender.com` |
 
-4. Deploy.
-
-Trên VPS, `NEXT_PUBLIC_APP_URL` và `CORS_ORIGINS` phải khớp URL Vercel/custom domain.
-
-### Cookie đăng nhập (web)
-
-- Vercel `*.vercel.app` + API domain khác → cookie cross-site dễ lỗi.
-- Khuyến nghị: custom domain web (`app.yourdomain.com`) + API (`api.yourdomain.com`), set `COOKIE_DOMAIN=.yourdomain.com` trên VPS.
+Redeploy frontend sau khi đổi `NEXT_PUBLIC_API_URL`.
 
 ---
 
-## 3. Kiểm tra sau deploy
+## 4. Cookie / đăng nhập cross-site
 
-- `GET https://api.yourdomain.com/health` → `{ ok: true, db: "connected" }`
-- Mở web → đăng nhập, xem phim, thử upload CCCD (YOLO nội bộ Docker).
+- Web `*.vercel.app` + API `*.onrender.com` → cookie **SameSite=None; Secure** (`COOKIE_SAMESITE=none`).
+- Lâu dài nên gắn custom domain chung (`app.domain.com` + `api.domain.com`) rồi set `COOKIE_DOMAIN=.domain.com` và có thể dùng `COOKIE_SAMESITE=lax`.
 
 ---
 
-## 4. Cập nhật phiên bản
+## 5. Kiểm tra sau deploy
 
-**VPS:**
+1. `GET /health` trên API → DB connected  
+2. `GET /health` trên YOLO → model + classes  
+3. Mở web → đăng nhập Google / email  
+4. Thử upload CCCD (age gate) — backend gọi `AI_SERVICE_URL/analyze`
+
+---
+
+## Phụ lục — Deploy VPS (Docker, kiến trúc cũ)
+
+Nếu dùng một VPS thay Render:
 
 ```bash
-cd ~/cinewave/CINEWAVE && git pull
-cd ~/cinewave/server-YOLO-CINEWAVE && git pull
-cd ~/cinewave/CINEWAVE/deploy && docker compose up -d --build
+sudo apt update && sudo apt install -y docker.io docker-compose-plugin nginx certbot python3-certbot-nginx
 ```
 
-**Vercel:** push lên `main` → auto deploy (nếu đã bật).
+Clone cạnh nhau `CINEWAVE` + `server-YOLO-CINEWAVE`, rồi:
+
+```bash
+cd ~/cinewave/CINEWAVE/deploy
+cp .env.vps.example .env   # chỉnh biến
+docker compose up -d --build
+```
+
+Chi tiết Nginx/HTTPS xem lịch sử commit / `deploy/nginx/cinewave-api.conf`.

@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 
 import {
+  baseCookie,
   clearAuthCookies,
   clearGoogleOAuthCookies,
   GOOGLE_MOBILE_COOKIE,
@@ -79,18 +80,12 @@ export function googleStart(req: Request, res: Response) {
 
   setGoogleOAuthCookies(res, state, next);
   res.cookie(GOOGLE_REDIRECT_COOKIE, redirectUri, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
+    ...baseCookie,
     maxAge: 10 * 60 * 1000,
   });
   if (isMobile) {
     res.cookie(GOOGLE_MOBILE_COOKIE, "1", {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
+      ...baseCookie,
       maxAge: 10 * 60 * 1000,
     });
   }

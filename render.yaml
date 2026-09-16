@@ -1,0 +1,72 @@
+# Blueprint Render — Backend CINEWAVE
+# Dashboard: New → Blueprint → chọn repo CINEWAVE
+# YOLO deploy riêng từ repo server-YOLO-CINEWAVE (xem DEPLOY.md)
+
+services:
+  - type: web
+    name: cinewave-api
+    runtime: node
+    plan: starter
+    region: singapore
+    rootDir: backend
+    # --include=dev: Render set NODE_ENV=production nên npm ci mặc định bỏ @types/*
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://cinewave-tt.vercel.app
+      - key: CORS_ORIGINS
+        value: https://cinewave-tt.vercel.app
+      - key: COOKIE_SAMESITE
+        value: none
+      - key: HOLD_TTL_SECONDS
+        value: "270"
+      - key: UPLOAD_TMP_DIR
+        value: ./uploads/tmp
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: AI_SERVICE_URL
+        sync: false
+      - key: AI_SERVICE_KEY
+        sync: false
+      - key: OMDB_API_KEY
+        sync: false
+      - key: TMDB_API_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: PAYMENT_PROVIDER
+        value: SEPAY
+      - key: SEPAY_ACCOUNT_NUMBER
+        sync: false
+      - key: SEPAY_BANK
+        sync: false
+      - key: SEPAY_BANK_LABEL
+        sync: false
+      - key: SEPAY_ACCOUNT_NAME
+        sync: false
+      - key: SEPAY_QR_BASE
+        value: https://qr.sepay.vn/img
+      - key: SEPAY_WEBHOOK_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        sync: false
