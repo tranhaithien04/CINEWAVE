@@ -41,11 +41,17 @@ export async function sendMail({ to, subject, text, html }: MailInput): Promise<
   }
 
   try {
+    // Render/Docker often resolves smtp.gmail.com to IPv6 first; many hosts
+    // cannot route IPv6 → ENETUNREACH. Force IPv4 for outbound SMTP.
     const transporter = nodemailer.createTransport({
       host,
       port,
       secure: port === 465,
       requireTLS: port === 587,
+      family: 4,
+      connectionTimeout: 20_000,
+      greetingTimeout: 20_000,
+      socketTimeout: 30_000,
       auth: user && pass ? { user, pass } : undefined,
     });
 

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="CINEWAVE">
+  <defs>
+    <linearGradient id="cw-mark" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67e8f9"/>
+      <stop offset="0.55" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+    <linearGradient id="cw-wave" x1="8" y1="16" x2="26" y2="16" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#a5f3fc" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#38bdf8" stop-opacity="0.85"/>
+    </linearGradient>
+    <radialGradient id="cw-glow" cx="30%" cy="25%" r="70%">
+      <stop stop-color="#a5f3fc" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#0a0c16" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="#0a0c16"/>
+  <rect width="32" height="32" rx="8" fill="url(#cw-glow)"/>
+  <rect x="5.5" y="6.5" width="21" height="19" rx="3.5" stroke="url(#cw-mark)" stroke-width="1.6" fill="none"/>
+  <rect x="8" y="9.2" width="2.2" height="2.2" rx="0.5" fill="url(#cw-mark)" opacity="0.9"/>
+  <rect x="8" y="14.9" width="2.2" height="2.2" rx="0.5" fill="url(#cw-mark)" opacity="0.9"/>
+  <rect x="8" y="20.6" width="2.2" height="2.2" rx="0.5" fill="url(#cw-mark)" opacity="0.9"/>
+  <rect x="21.8" y="9.2" width="2.2" height="2.2" rx="0.5" fill="url(#cw-mark)" opacity="0.9"/>
+  <rect x="21.8" y="14.9" width="2.2" height="2.2" rx="0.5" fill="url(#cw-mark)" opacity="0.9"/>
+  <rect x="21.8" y="20.6" width="2.2" height="2.2" rx="0.5" fill="url(#cw-mark)" opacity="0.9"/>
+  <path d="M11.2 18.2c1.6-3.2 3.2-3.2 4.8 0s3.2 3.2 4.8 0" stroke="url(#cw-wave)" stroke-width="1.85" stroke-linecap="round" fill="none"/>
+  <circle cx="16" cy="11.5" r="1.15" fill="#ecfeff"/>
+</svg>
