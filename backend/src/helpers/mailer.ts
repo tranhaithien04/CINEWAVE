@@ -1,4 +1,5 @@
 import nodemailer, { type Transporter } from "nodemailer";
+import type SMTPTransport from "nodemailer/lib/smtp-transport";
 
 import { getRuntimeEnvSync } from "./system-settings.js";
 
@@ -44,6 +45,7 @@ function getSmtpTransporter(cfg: SmtpConfig): Transporter {
 
   // Render/Docker often resolves smtp.gmail.com to IPv6 first; many hosts
   // cannot route IPv6 → ENETUNREACH. Force IPv4 for outbound SMTP.
+  // Cast: @types/nodemailer omits smtp-connection fields (family, timeouts, pool).
   cachedTransporter = nodemailer.createTransport({
     host: cfg.host,
     port: cfg.port,
@@ -57,7 +59,7 @@ function getSmtpTransporter(cfg: SmtpConfig): Transporter {
     pool: true,
     maxConnections: 3,
     maxMessages: 100,
-  });
+  } as SMTPTransport.Options);
   cachedTransporterKey = key;
   return cachedTransporter;
 }
