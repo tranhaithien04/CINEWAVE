@@ -212,7 +212,8 @@ export async function checkInTicket(code: string, opts?: { sig?: string; require
     checkedInAt: new Date().toISOString(),
   });
 
-  await notifyUser({
+  // Gate must respond immediately — notification/email run in the background.
+  void notifyUser({
     userEmail: next.userEmail,
     type: "TICKET_CHECKED_IN",
     title: "Đã vào rạp",
@@ -221,6 +222,8 @@ export async function checkInTicket(code: string, opts?: { sig?: string; require
     bookingId: next.id,
     movieSlug: next.movieSlug,
     dedupe: false,
+  }).catch((error) => {
+    console.error("Không gửi được thông báo check-in", error);
   });
 
   return withShowtimeFlags(next, false);

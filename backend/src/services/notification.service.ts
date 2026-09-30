@@ -80,17 +80,22 @@ export async function notifyUser(input: NotifyInput) {
     createdAt: new Date().toISOString(),
   };
 
-  try {
-    if (input.sendEmail !== false) {
-      await sendMail({ to: user.email, subject: `[CINEWAVE] ${record.title}`, text: record.body });
-      record.emailSentAt = new Date().toISOString();
-    }
-  } catch (error) {
-    console.error("Không gửi được email thông báo", error);
-  }
-
+  // Persist + push realtime first so callers (esp. gate check-in) are not blocked by SMTP.
   await saveNotification(record);
   const publicNote = toPublicNotification(record);
   emitUserNotification(user.id, publicNote);
+
+  if (input.sendEmail !== false) {
+    void sendMail({ to: user.email, subject: `[CINEWAVE] ${record.title}`, text: record.body })
+      .then(async (result) => {
+        if (!result.sent || result.transport === "console-fallback") return;
+        record.emailSentAt = new Date().toISOString();
+        await saveNotification(record);
+      })
+      .catch((error) => {
+        console.error("Không gửi được email thông báo", error);
+      });
+  }
+
   return publicNote;
 }
