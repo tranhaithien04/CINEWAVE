@@ -42,8 +42,52 @@ type AiAnalyzeResponse = {
   fieldConfidence?: Record<string, number>;
   reasons?: string[];
   qrDecoded?: boolean;
+  qrSource?: string;
+  qrRaw?: string | null;
+  /** Nested shape used by older AI builds */
   qr?: CccdQrFields;
+  /** Flat shape from current cccd_detect_server /analyze */
+  qrFields?: {
+    id?: string | null;
+    oldId?: string | null;
+    fullName?: string | null;
+    dob?: string | null;
+    gender?: string | null;
+    address?: string | null;
+    issueDate?: string | null;
+  };
+  ocrFields?: Record<string, unknown>;
+  ocrEngine?: string;
+  rotationDeg?: number;
 };
+
+const HARD_MISMATCH_REASONS = new Set(["id_mismatch", "dob_mismatch", "name_mismatch"]);
+
+function mapAiQr(ai: AiAnalyzeResponse): CccdQrFields {
+  if (ai.qr && typeof ai.qr === "object") {
+    return {
+      decoded: ai.qr.decoded === true || ai.qrDecoded === true,
+      idNumber: ai.qr.idNumber ?? null,
+      oldId: ai.qr.oldId ?? null,
+      fullName: ai.qr.fullName ?? null,
+      dob: ai.qr.dob ?? null,
+      gender: ai.qr.gender ?? null,
+      address: ai.qr.address ?? null,
+      issueDate: ai.qr.issueDate ?? null,
+    };
+  }
+  const f = ai.qrFields;
+  return {
+    decoded: ai.qrDecoded === true || Boolean(ai.qrRaw),
+    idNumber: f?.id ?? null,
+    oldId: f?.oldId ?? null,
+    fullName: f?.fullName ?? ai.fullName ?? null,
+    dob: f?.dob ?? ai.dob ?? null,
+    gender: f?.gender ?? null,
+    address: f?.address ?? null,
+    issueDate: f?.issueDate ?? null,
+  };
+}
 
 export type VerifyUploadInput = {
   rating?: string;
@@ -99,6 +143,7 @@ async function callAiAnalyze(file: Express.Multer.File): Promise<AiAnalyzeRespon
       method: "POST",
       body: form,
       headers,
+      signal: AbortSignal.timeout(120_000),
     });
   } catch {
     throw new DomainError("VALIDATION_ERROR", "Không kết nối được dịch vụ nhận diện CCCD", 503);
@@ -177,24 +222,29 @@ export async function verifyAgeFromUpload(userId: string, input: VerifyUploadInp
   try {
     const ai = await callAiAnalyze(input.file);
     const tmpPath = await tmpPathPromise;
-    const dob = ai.dob ?? null;
+    const qr = mapAiQr(ai);
+    const dob = qr.dob ?? ai.dob ?? null;
     const computedAge = dob ? computeAge(dob) : null;
     const confidence = typeof ai.confidence === "number" ? ai.confidence : 0;
     const reasons = Array.isArray(ai.reasons) ? ai.reasons : [];
-    const hasMismatch = reasons.some((r) => r.endsWith("_mismatch"));
+    // Only hard-fail on real QR↔OCR conflicts; ignore soft `*_mismatch_ocr_ignored`
+    const hardMismatches = reasons.filter((r) => HARD_MISMATCH_REASONS.has(r));
+    const hasMismatch = hardMismatches.length > 0;
     const fieldsOk =
       ai.fieldsOk === true ||
       ai.qrMatched === true ||
+      (qr.decoded && Boolean(qr.dob) && Boolean(qr.idNumber || ai.idMasked)) ||
       (ai.ocrOnly === true && Boolean(dob) && Boolean(ai.idMasked));
 
     let failureReason: string | null = null;
     let passed = false;
 
     if (hasMismatch) {
-      failureReason = reasons.filter((r) => r.endsWith("_mismatch")).join(",") || "field_mismatch";
+      failureReason = hardMismatches.join(",") || "field_mismatch";
     } else if (!fieldsOk || !dob || computedAge == null) {
       if (reasons.includes("missing_dob") || !dob) failureReason = "missing_dob";
       else if (reasons.includes("missing_id") || !ai.idMasked) failureReason = "missing_id";
+      else if (reasons.includes("qr_decode_failed") && !dob) failureReason = "qr_decode_failed";
       else failureReason = reasons.join(",") || "fields_incomplete";
     } else if (confidence < MIN_AI_CONFIDENCE) {
       failureReason = "low_confidence";
@@ -211,6 +261,8 @@ export async function verifyAgeFromUpload(userId: string, input: VerifyUploadInp
           ? "Không đọc được ngày sinh trên CCCD."
           : failureReason === "missing_id"
             ? "Không đọc được số CCCD."
+          : failureReason === "qr_decode_failed"
+            ? "Không giải mã được mã QR. Chụp gần hơn, đủ sáng, hiện rõ QR."
             : hasMismatch
               ? "Thông tin OCR không khớp mã QR."
               : "Thử ảnh rõ hơn, đủ sáng, hiện đủ chữ và mã QR.";
@@ -261,12 +313,6 @@ export async function verifyAgeFromUpload(userId: string, input: VerifyUploadInp
       dedupe: false,
     });
 
-    const qr = ai.qr ?? {
-      decoded: ai.qrDecoded === true,
-      fullName: ai.fullName ?? null,
-      dob: ai.dob ?? null,
-    };
-
     return {
       passed,
       requiredAge,
@@ -279,6 +325,9 @@ export async function verifyAgeFromUpload(userId: string, input: VerifyUploadInp
       qr,
       qrDecoded: qr.decoded,
       qrMatched: ai.qrMatched === true,
+      qrSource: ai.qrSource ?? null,
+      dobSource: ai.dobSource ?? null,
+      ocrEngine: ai.ocrEngine ?? null,
       message: passed
         ? `Đủ điều kiện xem phim ${rating}`
         : failureReason === "underage"

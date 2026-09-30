@@ -6,20 +6,26 @@ Kiến trúc cloud khuyến nghị:
 |------------|------|-----------|
 | Frontend | Vercel | https://cinewave-tt.vercel.app |
 | Backend API | Render | https://cinewave-api.onrender.com |
-| YOLO CCCD | Render (Docker) | https://cinewave-yolo.onrender.com |
+| YOLO CCCD | Local `:8000` / Docker | `dataset_luanvan/cccd_detect_server` (VietOCR + WeChat/zxing QR) |
 
-> YOLO (PyTorch + RapidOCR) cần **≥ 1–2 GB RAM**. Gói **Free** Render dễ OOM / cold-start rất lâu — nên dùng **Starter** trở lên cho `cinewave-yolo`.
+> YOLO + VietOCR + WeChat QR cần **≥ 2 GB RAM**. Render Free dễ OOM — nên Starter trở lên nếu deploy cloud.
 
 ---
 
-## 1. Deploy YOLO (repo `server-YOLO-CINEWAVE`)
+## 1. YOLO / CCCD AI (`cccd_detect_server`)
 
-1. Đảm bảo repo có `Dockerfile`, `weights/best.pt`, `render.yaml` (đã chuẩn bị local tại `D:\server-YOLO-CINEWAVE` — push lên GitHub).
-2. [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint** → chọn `tranhaithien04/server-YOLO-CINEWAVE`  
-   hoặc **New Web Service** → repo đó → **Docker**.
-3. Plan: **Starter** (khuyến nghị), region Singapore.
-4. Sau khi live, ghi lại URL, ví dụ `https://cinewave-yolo.onrender.com`.
-5. Kiểm tra: `GET https://cinewave-yolo.onrender.com/health`
+Local (khớp `backend/.env` → `AI_SERVICE_URL=http://localhost:8000`):
+
+```bat
+cd D:\dataset_luanvan\cccd_detect_server
+.venv\Scripts\python.exe -m uvicorn app:app --host 0.0.0.0 --port 8000
+```
+
+Cần `weights/best.pt` và `weights/wechat_qrcode/` (`python download_wechat_models.py` nếu thiếu).
+
+Docker/VPS: `LuanVan/deploy/docker-compose.yml` build từ `../../dataset_luanvan/cccd_detect_server`.
+
+Kiểm tra: `GET /health`, `POST /analyze`, `POST /decode-qr`.
 
 ---
 

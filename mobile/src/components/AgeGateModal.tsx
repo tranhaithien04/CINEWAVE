@@ -265,6 +265,19 @@ export function AgeGateModal({
               {result.idMasked && (
                 <Text style={styles.resultSub}>Mã thẻ: {result.idMasked}</Text>
               )}
+              {(result.qr?.fullName || result.fullName) && (
+                <Text style={styles.resultSub}>
+                  Họ tên: {result.qr?.fullName || result.fullName}
+                </Text>
+              )}
+              {(result.qr?.dob || result.dob) && (
+                <Text style={styles.resultSub}>Ngày sinh: {result.qr?.dob || result.dob}</Text>
+              )}
+              {result.qrDecoded != null && (
+                <Text style={styles.resultSub}>
+                  QR: {result.qrDecoded ? 'đã giải mã' : 'không đọc được (dùng OCR)'}
+                </Text>
+              )}
             </View>
           )}
 
@@ -312,7 +325,7 @@ export function AgeGateModal({
               <View style={styles.scanningIndicator}>
                 <ActivityIndicator color={colors.primary} />
                 <Text style={styles.scanningText}>
-                  YOLO & OCR AI đang nhận diện độ tuổi...
+                  YOLO + VietOCR + QR đang nhận diện...
                 </Text>
               </View>
             ) : result?.passed ? (

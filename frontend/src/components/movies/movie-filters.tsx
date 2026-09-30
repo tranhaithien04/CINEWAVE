@@ -50,7 +50,7 @@ export function MovieFilters({
   const options = ["ALL", ...AGE_RATINGS] as const;
 
   return (
-    <div className="flex flex-wrap gap-2.5">
+    <div className="-mx-1 flex gap-2.5 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
       {options.map((option) => {
         const conf = ratingConfig[option];
         const isActive = value === option;
@@ -61,7 +61,7 @@ export function MovieFilters({
             type="button"
             onClick={() => onChange(option)}
             className={cn(
-              "relative inline-flex items-center justify-center rounded-xl border px-3.5 py-1.5 text-xs transition-[transform,background-color,border-color,color] duration-200 active:scale-95",
+              "relative inline-flex shrink-0 items-center justify-center rounded-xl border px-3.5 py-1.5 text-xs transition-[transform,background-color,border-color,color] duration-200 active:scale-95",
               isActive ? conf.activeClass : conf.inactiveClass,
             )}
           >

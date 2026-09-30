@@ -40,6 +40,7 @@
     @apply bg-background font-sans text-foreground antialiased;
     margin: 0;
     background-color: #0a0c16;
+    overflow-x: clip;
   }
 
   html.lenis, html.lenis body {

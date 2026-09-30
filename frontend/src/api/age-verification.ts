@@ -23,6 +23,9 @@ export type AgeVerificationResult = {
   qr?: CccdQrFields;
   qrDecoded?: boolean;
   qrMatched?: boolean;
+  qrSource?: string | null;
+  dobSource?: string | null;
+  ocrEngine?: string | null;
   message: string;
   reasons?: string[];
   rawImageDeleted?: boolean;

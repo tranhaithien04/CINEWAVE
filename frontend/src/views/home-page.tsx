@@ -46,16 +46,16 @@ function HeroCopy({
 
       <div
         className={cn(
-          "inline-flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-300/90",
+          "inline-flex max-w-full items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300/90 sm:gap-2.5 sm:text-[11px] sm:tracking-[0.22em]",
           centered ? "justify-center" : "",
         )}
       >
-        <span className="h-px w-6 bg-gradient-to-r from-transparent to-cyan-400/80" aria-hidden />
-        <span>Trải nghiệm rạp chiếu thế hệ mới</span>
-        <span className="h-px w-6 bg-gradient-to-l from-transparent to-cyan-400/80" aria-hidden />
+        <span className="hidden h-px w-6 bg-gradient-to-r from-transparent to-cyan-400/80 sm:block" aria-hidden />
+        <span className="text-balance">Trải nghiệm rạp chiếu thế hệ mới</span>
+        <span className="hidden h-px w-6 bg-gradient-to-l from-transparent to-cyan-400/80 sm:block" aria-hidden />
       </div>
 
-      <h1 className="font-display text-[2.65rem] font-black leading-[0.95] tracking-[-0.04em] text-white sm:text-6xl md:text-7xl lg:text-[5.25rem]">
+      <h1 className="font-display text-[2.15rem] font-black leading-[0.95] tracking-[-0.04em] text-white sm:text-6xl md:text-7xl lg:text-[5.25rem]">
         <span className="block text-balance">ĐẶT VÉ CHUẨN RẠP</span>
         <span className="mt-1 block bg-gradient-to-r from-cyan-200 via-sky-300 to-cyan-500 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(34,211,238,0.25)]">
           TRONG VÀI PHÚT
@@ -242,29 +242,29 @@ export function HomePage() {
           </section>
 
           {/* ---------------- SECTION 2: 3 CORE TECH FEATURES ---------------- */}
-          <section className="relative flex min-h-[100svh] flex-col items-center justify-center overflow-visible px-4 py-24">
+          <section className="relative flex min-h-[100svh] flex-col items-center justify-center overflow-visible px-4 py-16 sm:py-24">
             <m.div
               initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: false, amount: 0.2 }}
+              viewport={{ once: false, amount: 0.15 }}
               transition={{ duration: 0.7, ease: "easeOut" }}
               className="relative z-10 mx-auto w-full max-w-5xl"
             >
-              <div className="mb-12 text-center">
+              <div className="mb-8 text-center sm:mb-12">
                 <div className="mb-4 inline-flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-300/85">
                   <span className="h-px w-5 bg-gradient-to-r from-transparent to-cyan-400/70" aria-hidden />
                   3 bước · 1 lần chạm
                   <span className="h-px w-5 bg-gradient-to-l from-transparent to-cyan-400/70" aria-hidden />
                 </div>
-                <h2 className="font-display text-3xl font-black tracking-[-0.03em] text-white sm:text-5xl">
+                <h2 className="font-display text-2xl font-black tracking-[-0.03em] text-white sm:text-3xl md:text-5xl">
                   Đặt vé không rườm rà
                 </h2>
-                <p className="mx-auto mt-4 max-w-md text-sm font-medium leading-relaxed text-gray-300 md:text-base">
+                <p className="mx-auto mt-3 max-w-md text-sm font-medium leading-relaxed text-gray-300 sm:mt-4 md:text-base">
                   Suất chuẩn rạp → ghế 3D live → vé QR. Xong.
                 </p>
               </div>
 
-              <div className="grid gap-5 md:grid-cols-3">
+              <div className="grid gap-4 sm:gap-5 md:grid-cols-3">
                 {[
                   {
                     icon: Clapperboard,
@@ -296,19 +296,19 @@ export function HomePage() {
                 ].map((item) => (
                   <div
                     key={item.title}
-                    className={`group relative overflow-hidden rounded-2xl border bg-gradient-to-br ${item.accent} ${item.ring} p-8 shadow-2xl ${item.glow} backdrop-blur-xl transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_50px_-12px_rgba(34,211,238,0.35)]`}
+                    className={`group relative overflow-hidden rounded-2xl border bg-gradient-to-br ${item.accent} ${item.ring} p-5 shadow-2xl ${item.glow} backdrop-blur-xl transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_50px_-12px_rgba(34,211,238,0.35)] sm:p-8`}
                   >
                     <div
                       aria-hidden
                       className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-70"
                     />
-                    <div className={`mb-5 inline-flex rounded-xl border p-3.5 ${item.iconTone}`}>
-                      <item.icon className="h-7 w-7" strokeWidth={2.1} />
+                    <div className={`mb-4 inline-flex rounded-xl border p-3 sm:mb-5 sm:p-3.5 ${item.iconTone}`}>
+                      <item.icon className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={2.1} />
                     </div>
-                    <h3 className="font-display text-xl font-black tracking-tight text-white sm:text-2xl">
+                    <h3 className="font-display text-lg font-black tracking-tight text-white sm:text-xl md:text-2xl">
                       {item.title}
                     </h3>
-                    <p className="mt-3 text-sm font-medium leading-relaxed text-gray-100/95">{item.text}</p>
+                    <p className="mt-2 text-sm font-medium leading-relaxed text-gray-100/95 sm:mt-3">{item.text}</p>
                   </div>
                 ))}
               </div>

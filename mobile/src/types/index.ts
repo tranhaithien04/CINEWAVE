@@ -152,6 +152,20 @@ export type AgeVerificationResult = {
   confidence: number | null;
   verificationId: string;
   idMasked: string | null;
+  fullName?: string | null;
+  dob?: string | null;
+  qr?: {
+    decoded: boolean;
+    idNumber?: string | null;
+    oldId?: string | null;
+    fullName?: string | null;
+    dob?: string | null;
+    gender?: string | null;
+    address?: string | null;
+    issueDate?: string | null;
+  };
+  qrDecoded?: boolean;
+  qrMatched?: boolean;
   message: string;
   reasons?: string[];
   rawImageDeleted?: boolean;

@@ -35,11 +35,11 @@ export function AuthNav() {
 
   if (!user) {
     return (
-      <div className="flex items-center gap-2">
-        <Button asChild variant="ghost" size="sm">
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <Button asChild variant="ghost" size="sm" className="px-2.5 sm:px-3">
           <Link href={paths.login}>Đăng nhập</Link>
         </Button>
-        <Button asChild size="sm">
+        <Button asChild size="sm" className="hidden sm:inline-flex">
           <Link href={paths.register}>Đăng ký</Link>
         </Button>
       </div>

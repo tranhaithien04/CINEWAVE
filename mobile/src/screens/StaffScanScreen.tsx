@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,12 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { CameraView, scanFromURLAsync, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import { ApiError } from '../api/client';
 import {
   checkInTicket,
@@ -27,12 +29,52 @@ import { NeonButton } from '../components/NeonButton';
 import { GlassCard } from '../components/GlassCard';
 import { AgeBadge } from '../components/AgeBadge';
 
+const VERDICT_LABEL: Record<TicketInspectResult['verdict'], string> = {
+  VALID: 'Hợp lệ',
+  USED: 'Đã dùng',
+  UNPAID: 'Chưa thanh toán',
+  CANCELLED: 'Đã hủy',
+  REFUND_PENDING: 'Chờ hoàn tiền',
+  REFUNDED: 'Đã hoàn',
+};
+
+function verdictTone(verdict?: TicketInspectResult['verdict']) {
+  if (verdict === 'VALID') {
+    return {
+      border: 'rgba(16, 185, 129, 0.45)',
+      bg: 'rgba(16, 185, 129, 0.12)',
+      badgeBg: 'rgba(16, 185, 129, 0.22)',
+      badgeText: colors.emeraldLight,
+      message: colors.emeraldLight,
+    };
+  }
+  if (verdict === 'USED' || verdict === 'REFUND_PENDING') {
+    return {
+      border: 'rgba(245, 158, 11, 0.45)',
+      bg: 'rgba(245, 158, 11, 0.12)',
+      badgeBg: 'rgba(245, 158, 11, 0.22)',
+      badgeText: colors.goldLight,
+      message: colors.goldLight,
+    };
+  }
+  return {
+    border: 'rgba(244, 63, 94, 0.45)',
+    bg: 'rgba(244, 63, 94, 0.12)',
+    badgeBg: 'rgba(244, 63, 94, 0.22)',
+    badgeText: colors.roseLight,
+    message: colors.roseLight,
+  };
+}
+
 export function StaffScanScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { user, loading } = useAuth();
   const { getMovieBySlug, getShowtimeById } = useCatalog();
   const [permission, requestPermission] = useCameraPermissions();
-  const [cameraOn, setCameraOn] = useState(false);
+  const [cameraOn, setCameraOn] = useState(Boolean(route.params?.openCamera));
+  const [torchOn, setTorchOn] = useState(false);
+  const [readingImage, setReadingImage] = useState(false);
   const [manual, setManual] = useState('');
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -41,30 +83,53 @@ export function StaffScanScreen() {
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [lastRaw, setLastRaw] = useState('');
 
-  const onScan = useCallback(async (payload: { kind?: 'ticket' | 'refund'; code: string; sig?: string }) => {
-    setBusy(true);
-    setLookupError(null);
-    setCameraOn(false);
-    try {
-      const data = await inspectTicketAsStaff(payload.code, payload.sig, payload.kind);
-      setResult(data);
-      setLastSig(payload.sig);
-      if (data.verdict === 'VALID') {
-        Alert.alert('Hợp lệ', `Vé ${data.ticket.code} sẵn sàng vào rạp.`);
-      } else if (data.verdict === 'REFUND_PENDING') {
-        Alert.alert('Hoàn tiền', `Phiếu hoàn tiền ${data.ticket.code}`);
-      } else {
-        Alert.alert('Không hợp lệ', data.message);
+  const onScan = useCallback(
+    async (payload: { kind?: 'ticket' | 'refund'; code: string; sig?: string }) => {
+      setBusy(true);
+      setLookupError(null);
+      setCameraOn(false);
+      setTorchOn(false);
+      try {
+        const data = await inspectTicketAsStaff(payload.code, payload.sig, payload.kind);
+        setResult(data);
+        setLastSig(payload.sig);
+        if (data.verdict === 'VALID') {
+          Alert.alert('Hợp lệ', `Vé ${data.ticket.code} sẵn sàng vào rạp.`);
+        } else if (data.verdict === 'REFUND_PENDING') {
+          Alert.alert('Hoàn tiền', `Phiếu hoàn tiền ${data.ticket.code}`);
+        } else {
+          Alert.alert(VERDICT_LABEL[data.verdict] || 'Không hợp lệ', data.message);
+        }
+      } catch (err) {
+        setResult(null);
+        const message = err instanceof ApiError ? err.message : 'Không kiểm tra được vé';
+        setLookupError(message);
+        Alert.alert('Lỗi', message);
+      } finally {
+        setBusy(false);
       }
-    } catch (err) {
-      setResult(null);
-      const message = err instanceof ApiError ? err.message : 'Không kiểm tra được vé';
-      setLookupError(message);
-      Alert.alert('Lỗi', message);
-    } finally {
-      setBusy(false);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const refund = route.params?.refund as string | undefined;
+    const code = route.params?.code as string | undefined;
+    const sig = route.params?.sig as string | undefined;
+    const raw = route.params?.raw as string | undefined;
+    if (raw) {
+      const parsed = parseTicketQr(raw);
+      if (parsed) void onScan(parsed);
+      return;
     }
-  }, []);
+    if (refund) {
+      void onScan({ kind: 'refund', code: refund, sig });
+      return;
+    }
+    if (code) {
+      void onScan({ kind: 'ticket', code, sig });
+    }
+  }, [route.params?.refund, route.params?.code, route.params?.sig, route.params?.raw, onScan]);
 
   const handleBarcode = ({ data }: { data: string }) => {
     if (busy || data === lastRaw) return;
@@ -93,6 +158,42 @@ export function StaffScanScreen() {
     }
     setLastRaw('');
     setCameraOn(true);
+  };
+
+  const pickQrImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Cần quyền ảnh', 'Cho phép truy cập thư viện để chọn ảnh QR vé.');
+        return;
+      }
+      const picked = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 1,
+        allowsEditing: false,
+      });
+      if (picked.canceled || !picked.assets[0]?.uri) return;
+
+      setReadingImage(true);
+      setLookupError(null);
+      const scanned = await scanFromURLAsync(picked.assets[0].uri, ['qr']);
+      const raw = scanned[0]?.data?.trim();
+      if (!raw) {
+        Alert.alert('Không thấy QR', 'Ảnh không có mã QR rõ. Chụp gần hơn hoặc dùng camera.');
+        return;
+      }
+      const parsed = parseTicketQr(raw);
+      if (!parsed) {
+        Alert.alert('QR không phải vé CINEWAVE', 'Hãy dùng mã trên vé điện tử hoặc phiếu hoàn tiền.');
+        return;
+      }
+      setLastRaw(raw);
+      void onScan(parsed);
+    } catch (err: any) {
+      Alert.alert('Lỗi đọc ảnh', err?.message || 'Không đọc được QR từ ảnh.');
+    } finally {
+      setReadingImage(false);
+    }
   };
 
   const handleCheckIn = async () => {
@@ -129,7 +230,7 @@ export function StaffScanScreen() {
         message: 'Đã hoàn tiền rồi. Không trả lần hai.',
         signed: Boolean(lastSig),
       });
-      Alert.alert('Hoàn tiền', `Đã trả ${result.ticket.code}`);
+      Alert.alert('Hoàn tiền', `Đã trả ${formatVnd(result.ticket.total)} · ${result.ticket.code}`);
     } catch (err) {
       Alert.alert('Lỗi', err instanceof ApiError ? err.message : 'Không hoàn tiền được');
     } finally {
@@ -137,21 +238,47 @@ export function StaffScanScreen() {
     }
   };
 
+  const scanNext = () => {
+    setResult(null);
+    setManual('');
+    setLookupError(null);
+    setLastRaw('');
+    setLastSig(undefined);
+    void enableCamera();
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <Text style={styles.muted}>Đang tải…</Text>
+        <View style={styles.center}>
+          <ActivityIndicator color={colors.primary} />
+          <Text style={styles.muted}>Đang tải…</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
-  if (!user || (user.role !== 'STAFF' && user.role !== 'ADMIN')) {
+  if (!user) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <Text style={styles.title}>Khu vực nhân viên</Text>
-          <Text style={styles.muted}>Chỉ tài khoản Staff/Admin mới soát vé tại đây.</Text>
-          <NeonButton title="Đăng nhập" onPress={() => navigation.navigate('Login')} />
+          <Text style={styles.title}>Cần đăng nhập nhân viên</Text>
+          <Text style={styles.muted}>Trang soát vé dành cho role STAFF hoặc ADMIN.</Text>
+          <NeonButton title="Đăng nhập nhân viên" onPress={() => navigation.navigate('Login')} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (user.role !== 'STAFF' && user.role !== 'ADMIN') {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.center}>
+          <Text style={styles.title}>Không có quyền soát vé</Text>
+          <Text style={styles.muted}>
+            Tài khoản khách không vào được cổng. Đăng nhập staff@cinewave.vn để quét QR.
+          </Text>
+          <NeonButton title="Đăng nhập lại" onPress={() => navigation.navigate('Login')} />
         </View>
       </SafeAreaView>
     );
@@ -160,18 +287,21 @@ export function StaffScanScreen() {
   const ticket = result?.ticket;
   const movie = ticket ? getMovieBySlug(ticket.movieSlug) : null;
   const showtime = ticket ? getShowtimeById(ticket.showtimeId) : null;
+  const tone = verdictTone(result?.verdict);
+  const isRefundCard =
+    result?.verdict === 'REFUND_PENDING' || result?.verdict === 'REFUNDED' || result?.kind === 'refund';
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.back}>‹ Quay lại</Text>
         </TouchableOpacity>
 
-        <Text style={styles.eyebrow}>STAFF GATE SCANNER</Text>
-        <Text style={styles.title}>Soát vé & hoàn tiền</Text>
+        <Text style={styles.eyebrow}>CỔNG SOÁT VÉ · {user.role}</Text>
+        <Text style={styles.title}>Quét QR kiểm vé</Text>
         <Text style={styles.muted}>
-          Quét camera QR hoặc dán nội dung QR (URL gate / CINEWAVE|mã|chữ ký).
+          Camera / ảnh QR / dán mã — kiểm tra hợp lệ, đã dùng, giả, hoặc phiếu hoàn tiền.
         </Text>
 
         {cameraOn ? (
@@ -179,27 +309,56 @@ export function StaffScanScreen() {
             <CameraView
               style={StyleSheet.absoluteFillObject}
               facing="back"
+              enableTorch={torchOn}
               barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
               onBarcodeScanned={busy ? undefined : handleBarcode}
             />
+            <View style={styles.cameraFrame} pointerEvents="none" />
             <View style={styles.cameraOverlay}>
               <Text style={styles.cameraHint}>{busy ? 'Đang kiểm tra…' : 'Đưa QR vào khung'}</Text>
-              <NeonButton title="Tắt camera" variant="secondary" size="sm" onPress={() => setCameraOn(false)} />
+              <View style={styles.cameraActions}>
+                <NeonButton
+                  title={torchOn ? 'Tắt đèn' : 'Đèn pin'}
+                  variant="secondary"
+                  size="sm"
+                  onPress={() => setTorchOn((v) => !v)}
+                  style={{ flex: 1 }}
+                />
+                <NeonButton
+                  title="Tắt camera"
+                  variant="outline"
+                  size="sm"
+                  onPress={() => {
+                    setCameraOn(false);
+                    setTorchOn(false);
+                  }}
+                  style={{ flex: 1 }}
+                />
+              </View>
             </View>
           </View>
         ) : (
-          <NeonButton
-            title="Bật camera quét QR"
-            variant="primary"
-            onPress={() => void enableCamera()}
-            style={{ marginTop: spacing.md }}
-          />
+          <View style={styles.scanActions}>
+            <NeonButton
+              title="Bật camera quét QR"
+              variant="primary"
+              onPress={() => void enableCamera()}
+              style={{ flex: 1 }}
+            />
+            <NeonButton
+              title={readingImage ? 'Đang đọc ảnh…' : 'Chọn ảnh QR'}
+              variant="outline"
+              loading={readingImage}
+              onPress={() => void pickQrImage()}
+              style={{ flex: 1 }}
+            />
+          </View>
         )}
 
         <TextInput
           value={manual}
           onChangeText={setManual}
-          placeholder="Dán QR hoặc mã CW-..."
+          placeholder="Dán URL gate / QR text / mã CW-..."
           placeholderTextColor={colors.textMuted}
           multiline
           style={styles.input}
@@ -210,27 +369,64 @@ export function StaffScanScreen() {
           onPress={submitManual}
         />
 
-        {lookupError ? <Text style={styles.error}>{lookupError}</Text> : null}
+        {lookupError ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorTitle}>QR không hợp lệ</Text>
+            <Text style={styles.error}>{lookupError}</Text>
+          </View>
+        ) : null}
 
-        {ticket && movie ? (
-          <GlassCard style={styles.resultCard} highlight>
+        {ticket ? (
+          <GlassCard
+            style={[
+              styles.resultCard,
+              { borderColor: tone.border, backgroundColor: tone.bg },
+            ]}
+            highlight
+          >
             <View style={styles.resultHeader}>
-              <Text style={styles.resultCode}>{ticket.code}</Text>
-              <Text style={styles.verdict}>{result?.verdict}</Text>
+              <Text style={styles.resultEyebrow}>
+                {isRefundCard ? 'PHIẾU HOÀN TIỀN' : 'KẾT QUẢ SOÁT VÉ'}
+              </Text>
+              <View style={[styles.verdictBadge, { backgroundColor: tone.badgeBg }]}>
+                <Text style={[styles.verdictText, { color: tone.badgeText }]}>
+                  {result?.verdict ? VERDICT_LABEL[result.verdict] : '—'}
+                </Text>
+              </View>
             </View>
+
             <View style={styles.movieRow}>
-              <AgeBadge rating={movie.rating} size="sm" />
-              <Text style={styles.movieTitle}>{movie.title}</Text>
+              {movie ? <AgeBadge rating={movie.rating} size="sm" /> : null}
+              <Text style={styles.movieTitle}>{movie?.title ?? ticket.movieSlug}</Text>
             </View>
             <Text style={styles.muted}>
-              {showtime?.cinema} · {showtime?.room} · Ghế {ticket.seats.join(', ')}
+              {showtime ? `${showtime.cinema} · ${showtime.room}` : ticket.showtimeId}
             </Text>
-            <Text style={styles.muted}>{result?.message}</Text>
-            <Text style={styles.total}>{formatVnd(ticket.total)}</Text>
+
+            <View style={styles.metaGrid}>
+              <View style={styles.metaCell}>
+                <Text style={styles.metaLabel}>Mã vé</Text>
+                <Text style={styles.metaValueCode}>{ticket.code}</Text>
+              </View>
+              <View style={styles.metaCell}>
+                <Text style={styles.metaLabel}>Ghế</Text>
+                <Text style={styles.metaValue}>{ticket.seats.join(', ') || '—'}</Text>
+              </View>
+              <View style={styles.metaCell}>
+                <Text style={styles.metaLabel}>Tổng tiền</Text>
+                <Text style={styles.metaValueMoney}>{formatVnd(ticket.total)}</Text>
+              </View>
+              <View style={styles.metaCell}>
+                <Text style={styles.metaLabel}>Trạng thái</Text>
+                <Text style={styles.metaValue}>{ticket.status}</Text>
+              </View>
+            </View>
+
+            <Text style={[styles.message, { color: tone.message }]}>{result?.message}</Text>
 
             {result?.validForEntry ? (
               <NeonButton
-                title={checking ? 'Đang check-in…' : 'Cho khách vào rạp (check-in)'}
+                title={checking ? 'Đang check-in…' : 'Cho khách vào rạp'}
                 loading={checking}
                 onPress={() => void handleCheckIn()}
                 style={{ marginTop: spacing.md }}
@@ -239,7 +435,9 @@ export function StaffScanScreen() {
 
             {result?.validForRefund ? (
               <NeonButton
-                title={checking ? 'Đang hoàn…' : 'Xác nhận hoàn tiền mặt'}
+                title={
+                  checking ? 'Đang xác nhận…' : `Đã trả tiền mặt ${formatVnd(ticket.total)}`
+                }
                 variant="secondary"
                 loading={checking}
                 onPress={() => void handlePayout()}
@@ -247,15 +445,8 @@ export function StaffScanScreen() {
               />
             ) : null}
 
-            <TouchableOpacity
-              onPress={() => {
-                setResult(null);
-                setManual('');
-                setLookupError(null);
-                setLastRaw('');
-              }}
-            >
-              <Text style={styles.scanNext}>Quét vé tiếp theo →</Text>
+            <TouchableOpacity onPress={scanNext} style={styles.scanNextBtn}>
+              <Text style={styles.scanNext}>Quét vé tiếp →</Text>
             </TouchableOpacity>
           </GlassCard>
         ) : null}
@@ -267,19 +458,36 @@ export function StaffScanScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, paddingBottom: spacing.xxxl },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg, gap: spacing.md },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
   back: { color: colors.primaryLight, fontWeight: '700', marginBottom: spacing.md },
   eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5, color: colors.primaryLight },
   title: { fontSize: 22, fontWeight: '900', color: '#ffffff', marginTop: 4 },
   muted: { fontSize: 12, color: colors.textSecondary, marginTop: 6, lineHeight: 16 },
+  scanActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   cameraBox: {
     marginTop: spacing.md,
-    height: 280,
+    height: 300,
     borderRadius: radius.md,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.borderCyan,
     backgroundColor: '#000',
+  },
+  cameraFrame: {
+    position: 'absolute',
+    top: 36,
+    left: 36,
+    right: 36,
+    bottom: 88,
+    borderWidth: 2,
+    borderColor: 'rgba(34, 211, 238, 0.75)',
+    borderRadius: 16,
   },
   cameraOverlay: {
     position: 'absolute',
@@ -291,6 +499,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   cameraHint: { color: '#fff', fontWeight: '700', fontSize: 12, textAlign: 'center' },
+  cameraActions: { flexDirection: 'row', gap: spacing.sm },
   input: {
     marginTop: spacing.md,
     minHeight: 80,
@@ -303,16 +512,61 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'monospace',
   },
-  error: { color: colors.roseLight, marginTop: spacing.sm },
+  errorBox: {
+    marginTop: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(244, 63, 94, 0.35)',
+    backgroundColor: 'rgba(244, 63, 94, 0.12)',
+    padding: spacing.md,
+  },
+  errorTitle: { color: colors.roseLight, fontWeight: '800', fontSize: 12 },
+  error: { color: 'rgba(255,228,230,0.85)', marginTop: 4, fontSize: 11 },
   resultCard: { marginTop: spacing.lg, padding: spacing.lg },
-  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  resultCode: { fontSize: 16, fontWeight: '900', color: colors.primaryLight, fontFamily: 'monospace' },
-  verdict: { fontSize: 11, fontWeight: '800', color: colors.goldLight },
+  resultHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  resultEyebrow: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    color: '#ffffff',
+  },
+  verdictBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  verdictText: { fontSize: 11, fontWeight: '800' },
   movieRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing.sm },
   movieTitle: { fontSize: 16, fontWeight: '800', color: '#ffffff', flex: 1 },
-  total: { fontSize: 18, fontWeight: '900', color: colors.emeraldLight, marginTop: spacing.sm },
-  scanNext: {
+  metaGrid: {
     marginTop: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    padding: spacing.md,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  metaCell: { width: '45%', minWidth: 120 },
+  metaLabel: { fontSize: 10, color: colors.textMuted, marginBottom: 2 },
+  metaValue: { fontSize: 13, fontWeight: '800', color: '#ffffff' },
+  metaValueCode: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: colors.primaryLight,
+    fontFamily: 'monospace',
+  },
+  metaValueMoney: { fontSize: 13, fontWeight: '800', color: colors.emeraldLight },
+  message: { marginTop: spacing.md, fontSize: 13, fontWeight: '600', lineHeight: 18 },
+  scanNextBtn: { marginTop: spacing.md, paddingVertical: spacing.sm },
+  scanNext: {
     textAlign: 'center',
     color: colors.primaryLight,
     fontWeight: '800',

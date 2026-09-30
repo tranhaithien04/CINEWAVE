@@ -10,6 +10,7 @@ import { RegisterScreen } from '../screens/RegisterScreen';
 import { VerifyEmailScreen } from '../screens/VerifyEmailScreen';
 import { ChangeShowtimeScreen } from '../screens/ChangeShowtimeScreen';
 import { StaffScanScreen } from '../screens/StaffScanScreen';
+import { GateScreen } from '../screens/GateScreen';
 import { AdminNavigator } from './AdminNavigator';
 
 const Stack = createNativeStackNavigator();
@@ -32,6 +33,7 @@ export function RootNavigator() {
       <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ presentation: 'modal' }} />
       <Stack.Screen name="ChangeShowtime" component={ChangeShowtimeScreen} />
       <Stack.Screen name="StaffScan" component={StaffScanScreen} />
+      <Stack.Screen name="Gate" component={GateScreen} />
       <Stack.Screen name="AdminSuite" component={AdminNavigator} />
     </Stack.Navigator>
   );

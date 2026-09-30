@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/auth-context';
 import { ApiError } from '../api/client';
 import { colors, radius, spacing } from '../constants/theme';
@@ -20,6 +20,7 @@ import { AuthUser } from '../types';
 
 export function LoginScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { login } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -28,6 +29,12 @@ export function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const finishAuth = (authUser: AuthUser) => {
+    const next = route.params?.next as string | undefined;
+    const nextParams = route.params?.nextParams;
+    if (next && (authUser.role === 'STAFF' || authUser.role === 'ADMIN')) {
+      navigation.replace(next, nextParams);
+      return;
+    }
     if (authUser.role === 'STAFF') {
       navigation.navigate('StaffScan');
       return;

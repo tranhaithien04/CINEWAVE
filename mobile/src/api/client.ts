@@ -1,12 +1,21 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { DEFAULT_API_URL, STORAGE_KEYS } from '../constants/config';
 
 let currentApiUrl = DEFAULT_API_URL;
 
+/** Stale LAN IPs from previous networks — force migrate to DEFAULT_API_URL. */
+const STALE_API_HOSTS = new Set([
+  'localhost',
+  '127.0.0.1',
+  '10.10.122.176',
+  '192.168.2.8',
+]);
+
 function isUnusableMobileApiHost(url: string) {
   try {
     const host = new URL(url).hostname.toLowerCase();
-    return host === 'localhost' || host === '127.0.0.1' || host === '10.10.122.176';
+    return STALE_API_HOSTS.has(host);
   } catch {
     return true;
   }
@@ -79,15 +88,29 @@ export async function api<T>(path: string, options: ApiOptions = {}, retried = f
     reqHeaders['Authorization'] = `Bearer ${token}`;
   }
 
+  const timeoutMs = 12_000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
   let res: Response;
   try {
     res = await fetch(apiUrl(path), {
       ...rest,
+      signal: rest.signal ?? controller.signal,
       headers: reqHeaders,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch (err: any) {
-    throw new ApiError('NETWORK_ERROR', err?.message || 'Không thể kết nối máy chủ', 0);
+    const aborted = err?.name === 'AbortError';
+    throw new ApiError(
+      'NETWORK_ERROR',
+      aborted
+        ? `Hết thời gian kết nối API (${timeoutMs / 1000}s). Kiểm tra Wi‑Fi và URL: ${getApiUrl()}`
+        : err?.message || 'Không thể kết nối máy chủ',
+      0,
+    );
+  } finally {
+    clearTimeout(timer);
   }
 
   if (res.status === 401 && !retried && !path.startsWith('/auth/')) {
@@ -140,10 +163,6 @@ export async function uploadCccd(input: {
 }) {
   const token = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
 
-  // RN New Architecture FormData+fetch throws "Unsupported FormDataPart implementation".
-  // Use native multipart upload instead.
-  const FileSystem = await import('expo-file-system/legacy');
-
   const rawName =
     input.fileName?.trim() ||
     input.imageUri.split('/').pop()?.split('?')[0] ||
@@ -165,7 +184,7 @@ export async function uploadCccd(input: {
         : input.mimeType
       : mimeFromExt[ext] || 'image/jpeg';
 
-  const filename = `cccd_${Date.now()}.${ext === 'jpeg' ? 'jpg' : ext}`;
+  const fileName = `cccd_${Date.now()}.${ext === 'jpeg' ? 'jpg' : ext}`;
 
   const parameters: Record<string, string> = {
     rating: input.rating,
@@ -179,14 +198,14 @@ export async function uploadCccd(input: {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const upload = await FileSystem.uploadAsync(apiUrl('/age-verification'), input.imageUri, {
-    httpMethod: 'POST',
-    uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-    fieldName: 'file',
+  // Avoid expo-file-system here: Expo Go / Metro often breaks dynamic+legacy enums
+  // (FileSystemUploadType undefined). XHR multipart is the reliable RN path.
+  const upload = await uploadCccdViaXhr({
+    imageUri: input.imageUri,
     mimeType,
+    fileName,
     parameters,
     headers,
-    sessionType: FileSystem.FileSystemSessionType.FOREGROUND,
   });
 
   let data: any = {};
@@ -206,3 +225,56 @@ export async function uploadCccd(input: {
 
   return data;
 }
+
+function normalizeUploadUri(uri: string) {
+  if (!uri) return uri;
+  // Android content:// and file:// stay as-is. iOS ph:// is rare with ImagePicker cache copies.
+  if (Platform.OS === 'android' && uri.startsWith('/')) {
+    return `file://${uri}`;
+  }
+  return uri;
+}
+
+function uploadCccdViaXhr(input: {
+  imageUri: string;
+  mimeType: string;
+  fileName: string;
+  parameters: Record<string, string>;
+  headers: Record<string, string>;
+}): Promise<{ status: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    try {
+      const form = new FormData();
+      form.append('file', {
+        uri: normalizeUploadUri(input.imageUri),
+        name: input.fileName,
+        type: input.mimeType,
+      } as unknown as Blob);
+      for (const [key, value] of Object.entries(input.parameters)) {
+        form.append(key, value);
+      }
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', apiUrl('/age-verification'));
+      // Do NOT set Content-Type — XHR must add multipart boundary itself.
+      for (const [key, value] of Object.entries(input.headers)) {
+        if (key.toLowerCase() === 'content-type') continue;
+        xhr.setRequestHeader(key, value);
+      }
+      xhr.onload = () => {
+        resolve({ status: xhr.status, body: xhr.responseText ?? '' });
+      };
+      xhr.onerror = () => {
+        reject(new ApiError('NETWORK_ERROR', 'Không kết nối được máy chủ khi upload CCCD', 0));
+      };
+      xhr.ontimeout = () => {
+        reject(new ApiError('NETWORK_ERROR', 'Hết thời gian upload CCCD', 0));
+      };
+      xhr.timeout = 90_000;
+      xhr.send(form);
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+

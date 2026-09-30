@@ -1,15 +1,18 @@
-# Chạy trên VPS (clone CINEWAVE + server-YOLO-CINEWAVE cạnh nhau):
-#   ~/cinewave/CINEWAVE/deploy/docker-compose.yml
-#   ~/cinewave/server-YOLO-CINEWAVE/
+# Chạy trên VPS (clone CINEWAVE + cccd_detect_server cạnh nhau):
+#   D:/LuanVan  (hoặc ~/cinewave/CINEWAVE)
+#   D:/dataset_luanvan/cccd_detect_server
 #
-#   cd ~/cinewave/CINEWAVE/deploy
+#   cd D:/LuanVan/deploy
 #   cp .env.vps.example .env   # chỉnh biến
 #   docker compose up -d --build
+#
+# Local dev: chạy AI riêng rồi set AI_SERVICE_URL=http://localhost:8000
+#   cd D:/dataset_luanvan/cccd_detect_server && .venv/Scripts/python -m uvicorn app:app --host 0.0.0.0 --port 8000
 
 services:
   ai:
     build:
-      context: ../../server-YOLO-CINEWAVE
+      context: ../../dataset_luanvan/cccd_detect_server
       dockerfile: Dockerfile
     restart: unless-stopped
     expose:
@@ -19,7 +22,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 120s
+      start_period: 180s
 
   api:
     build:

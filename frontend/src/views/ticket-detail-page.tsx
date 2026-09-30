@@ -90,7 +90,7 @@ export function TicketDetailPage({ code }: { code: string }) {
 
   return (
     <main className="mx-auto max-w-xl px-4 py-10 md:py-16">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <Button asChild variant="ghost" size="sm" className="text-gray-400 hover:text-white">
           <Link href={paths.tickets}>
             <ArrowLeft className="mr-1.5 h-4 w-4" /> Vé của tôi
@@ -100,22 +100,24 @@ export function TicketDetailPage({ code }: { code: string }) {
           <Button
             size="sm"
             variant="outline"
-            className="rounded-xl border-white/10"
+            className="rounded-xl border-white/10 px-2.5 sm:px-3"
             onClick={() => {
               void navigator.clipboard.writeText(window.location.href);
               toast.success("Đã sao chép liên kết vé!");
             }}
           >
-            <Share2 className="mr-1.5 h-3.5 w-3.5" /> Chia sẻ
+            <Share2 className="h-3.5 w-3.5 sm:mr-1.5" />
+            <span className="hidden sm:inline">Chia sẻ</span>
           </Button>
           <Button
             size="sm"
-            className="rounded-xl bg-cyan-500 font-semibold text-black hover:bg-cyan-400 shadow-md shadow-cyan-500/20"
+            className="rounded-xl bg-cyan-500 px-2.5 font-semibold text-black hover:bg-cyan-400 shadow-md shadow-cyan-500/20 sm:px-3"
             onClick={() => {
               window.print();
             }}
           >
-            <Download className="mr-1.5 h-3.5 w-3.5" /> In vé
+            <Download className="h-3.5 w-3.5 sm:mr-1.5" />
+            <span className="hidden sm:inline">In vé</span>
           </Button>
         </div>
       </div>

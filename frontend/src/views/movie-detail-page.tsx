@@ -145,8 +145,8 @@ export function MovieDetailPage({ slug }: { slug: string }) {
         </Link>
       </div>
 
-      <div className="mx-auto mt-8 grid max-w-6xl items-start gap-6 px-4 md:mt-12 md:grid-cols-[240px_1fr] lg:grid-cols-[280px_1fr]">
-        <Card className="relative z-10 self-start overflow-hidden rounded-2xl border-white/10 shadow-2xl shadow-cyan-500/10">
+      <div className="mx-auto mt-6 grid max-w-6xl items-start gap-6 px-4 md:mt-12 md:grid-cols-[240px_1fr] lg:grid-cols-[280px_1fr]">
+        <Card className="relative z-10 mx-auto w-full max-w-[220px] self-start overflow-hidden rounded-2xl border-white/10 shadow-2xl shadow-cyan-500/10 sm:max-w-[240px] md:mx-0 md:max-w-none">
           <div className="relative aspect-[2/3]">
             <Image src={movie.posterUrl} alt={movie.title} fill sizes="280px" className="object-cover" />
             <AgeBadge rating={movie.rating} className="absolute left-3 top-3" />
@@ -206,8 +206,8 @@ export function MovieDetailPage({ slug }: { slug: string }) {
               <EmptyState title="Chưa có suất" description="Phim này chưa mở bán." />
             ) : (
               <div className="relative">
-                <div className="sticky top-16 z-20 -mx-1 mb-1 border-b border-white/[0.04] bg-[#0a0c16]/90 px-1 pb-4 pt-2 backdrop-blur-md">
-                  <div className="flex flex-wrap gap-2">
+                <div className="sticky top-14 z-20 -mx-1 mb-1 border-b border-white/[0.04] bg-[#0a0c16]/90 px-1 pb-3 pt-2 backdrop-blur-md sm:top-16 sm:pb-4">
+                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {days.map((item) => {
                       const sample = times.find((show) => dayKey(show.startsAt) === item);
                       return (
@@ -215,7 +215,7 @@ export function MovieDetailPage({ slug }: { slug: string }) {
                           key={item}
                           type="button"
                           variant={day === item ? "default" : "outline"}
-                          className={cn(day === item && "shadow-lg shadow-cyan-500/25")}
+                          className={cn("shrink-0", day === item && "shadow-lg shadow-cyan-500/25")}
                           onClick={() => setDay(item)}
                         >
                           {sample ? formatDay(sample.startsAt) : item}
@@ -225,15 +225,15 @@ export function MovieDetailPage({ slug }: { slug: string }) {
                   </div>
                 </div>
 
-                <div className="grid gap-3.5 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2 sm:gap-3.5">
                   {visible.map((showtime) => (
                     <Card
                       key={showtime.id}
                       className="group relative overflow-hidden rounded-2xl border-white/10 bg-cinema-900/70 backdrop-blur-md transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:border-cyan-500/50 hover:shadow-xl hover:shadow-cyan-500/10"
                     >
-                      <CardContent className="flex items-center justify-between gap-4 p-5">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2">
+                      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-5">
+                        <div className="min-w-0 space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="font-display text-xl font-black text-white">
                               {formatTime(showtime.startsAt)}
                             </span>
@@ -242,19 +242,21 @@ export function MovieDetailPage({ slug }: { slug: string }) {
                             </span>
                           </div>
                           <p className="flex items-center gap-1.5 text-xs text-gray-400">
-                            <MapPin className="h-3.5 w-3.5 text-cyan-400" />
-                            {showtime.cinema} · {showtime.room}
+                            <MapPin className="h-3.5 w-3.5 shrink-0 text-cyan-400" />
+                            <span className="truncate">
+                              {showtime.cinema} · {showtime.room}
+                            </span>
                           </p>
                           <p className="font-display text-sm font-bold text-cyan-300">
                             {formatVnd(showtime.priceBase)}
                           </p>
                         </div>
                         {showtime.closed ? (
-                          <Badge variant="outline" className="rounded-full border-white/15 text-gray-500">
+                          <Badge variant="outline" className="w-fit rounded-full border-white/15 text-gray-500">
                             Đã đóng
                           </Badge>
                         ) : (
-                          <Button asChild size="sm" className="rounded-xl shadow-md shadow-cyan-500/20">
+                          <Button asChild size="sm" className="w-full rounded-xl shadow-md shadow-cyan-500/20 sm:w-auto">
                             <Link href={paths.seats(showtime.id)}>Chọn ghế →</Link>
                           </Button>
                         )}

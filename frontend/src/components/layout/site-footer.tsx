@@ -56,8 +56,8 @@ export function SiteFooter() {
 
         {/* Bottom copyright line */}
         <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-white/5 pt-6 text-[11px] text-gray-500 sm:flex-row">
-          <p>© {new Date().getFullYear()} CINEWAVE Inc. Tất cả quyền được bảo lưu.</p>
-          <div className="flex gap-4">
+          <p className="text-center sm:text-left">© {new Date().getFullYear()} CINEWAVE Inc. Tất cả quyền được bảo lưu.</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
             <Link href={paths.legalAgeVerification} className="hover:text-gray-400">
               Điều khoản xác minh tuổi
             </Link>

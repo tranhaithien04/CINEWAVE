@@ -33,11 +33,14 @@ export function SiteHeader() {
   const pathname = usePathname() || "/";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-transparent bg-[#0a0c16]/70 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
-        <div className="flex items-center gap-2 md:gap-6">
+    <header className="sticky top-0 z-40 border-b border-transparent bg-[#0a0c16]/70 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-3 sm:h-16 sm:gap-4 sm:px-4">
+        <div className="flex min-w-0 items-center gap-1 sm:gap-2 md:gap-6">
           <MobileNav />
-          <BrandMark size="md" className="[&_.brand-word-underline]:hidden" />
+          <BrandMark
+            size="md"
+            className="min-w-0 [&_.brand-word-underline]:hidden [&_span.brand-wordmark]:max-[380px]:hidden"
+          />
           <nav className="hidden items-center gap-1 md:flex">
             {links.map((link) => {
               const active = navActive(pathname, link.href);
@@ -55,7 +58,7 @@ export function SiteHeader() {
             <AdminNavLink />
           </nav>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <SearchTrigger />
           <NotificationBell />
           <AuthNav />

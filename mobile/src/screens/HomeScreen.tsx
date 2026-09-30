@@ -42,7 +42,7 @@ export function HomeScreen() {
               {error}
             </Text>
             <Text style={styles.apiErrorHint}>
-              Chạm để thử lại · hoặc vào Hồ sơ → đổi API URL (ví dụ http://192.168.2.8:4000)
+              Chạm để thử lại · hoặc vào Hồ sơ → đổi API URL (ví dụ http://10.10.126.141:4000)
             </Text>
           </TouchableOpacity>
         ) : null}

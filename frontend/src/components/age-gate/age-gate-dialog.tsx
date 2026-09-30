@@ -203,7 +203,7 @@ export function AgeGateDialog({
             <div className="absolute bottom-2 right-2 h-5 w-5 border-b-2 border-r-2 border-cyan-400" />
             <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
             <p className="mt-3 font-medium text-white">Đang nhận diện…</p>
-            <p className="text-xs text-gray-400">YOLO + OCR + giải mã QR CCCD</p>
+            <p className="text-xs text-gray-400">YOLO + VietOCR + giải mã QR (WeChat/zxing)</p>
           </div>
         ) : null}
 
@@ -236,7 +236,7 @@ export function AgeGateDialog({
           <div className="space-y-3">
             <ol className="list-decimal space-y-1 pl-4 text-xs text-muted-foreground">
               <li>Đặt CCCD trên nền tối, không che góc.</li>
-              <li>Chụp thẳng, đủ sáng, tránh phản quang — hiện rõ mã QR.</li>
+              <li>Chụp thẳng, đủ sáng, tránh phản quang — hiện rõ mã QR (ưu tiên đọc từ QR).</li>
               <li>Chỉ mặt trước · JPEG / PNG / WEBP · tối đa 5MB.</li>
             </ol>
             <label className="relative flex cursor-pointer flex-col items-center gap-3 overflow-hidden rounded-2xl border-2 border-dashed border-cyan-500/30 bg-black/40 p-4 text-center transition-[border-color,background-color] duration-300 hover:border-cyan-400/60 hover:bg-cyan-500/5">

@@ -113,7 +113,7 @@ export function ProfileScreen() {
           </GlassCard>
         )}
 
-        {user?.role === 'STAFF' && (
+        {(user?.role === 'STAFF' || user?.role === 'ADMIN') && (
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => navigation.navigate('StaffScan')}
@@ -124,7 +124,9 @@ export function ProfileScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.staffTitle}>Soát vé & hoàn tiền</Text>
-              <Text style={styles.adminDesc}>Quét hoặc dán mã QR vé khách tại cổng vào rạp.</Text>
+              <Text style={styles.adminDesc}>
+                Quét camera / ảnh QR / dán mã — check-in cổng và trả hoàn tiền mặt.
+              </Text>
             </View>
             <Text style={styles.adminArrow}>→</Text>
           </TouchableOpacity>

@@ -220,9 +220,9 @@ export function SeatMapPage({ showtimeId, changeTicket }: { showtimeId: string; 
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
         {legend.map((item) => (
-          <Badge key={item.label} variant="outline" className="gap-2 rounded-full">
+          <Badge key={item.label} variant="outline" className="shrink-0 gap-2 rounded-full">
             <span className={`h-2.5 w-2.5 rounded-sm ${item.className}`} />
             {item.label}
           </Badge>

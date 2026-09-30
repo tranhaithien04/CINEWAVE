@@ -60,16 +60,18 @@ export function MovieCard({ movie, priority = false }: { movie: Movie; priority?
             <span>{movie.durationMin} phút</span>
           </div>
         </Link>
-        <div className="flex flex-1 flex-col justify-between p-4">
+        <div className="flex flex-1 flex-col justify-between p-3 sm:p-4">
           <div>
-            <h3 className="mb-1 line-clamp-1 font-display text-base font-bold text-white transition-colors group-hover:text-cyan-400">
+            <h3 className="mb-1 line-clamp-1 font-display text-sm font-bold text-white transition-colors group-hover:text-cyan-400 sm:text-base">
               {movie.title}
             </h3>
-            <p className="mb-4 line-clamp-2 text-xs leading-relaxed text-gray-400">{movie.description}</p>
+            <p className="mb-3 line-clamp-2 text-[11px] leading-relaxed text-gray-400 sm:mb-4 sm:text-xs">
+              {movie.description}
+            </p>
           </div>
           <div className="border-t border-white/5 pt-2">
-            <Button type="button" size="sm" className="w-full" onClick={() => setBookOpen(true)}>
-              <Ticket className="h-4 w-4" />
+            <Button type="button" size="sm" className="w-full text-xs sm:text-sm" onClick={() => setBookOpen(true)}>
+              <Ticket className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               Đặt vé ngay
             </Button>
           </div>

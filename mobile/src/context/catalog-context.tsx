@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Movie, Showtime } from '../types';
 import { fetchMovies, fetchShowtimes } from '../api/catalog';
-import { getApiUrl } from '../api/client';
+import { ensureLanApiUrl, getApiUrl } from '../api/client';
 
 type CatalogContextType = {
   movies: Movie[];
@@ -24,6 +24,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
 
   const loadData = async () => {
     setLoading(true);
+    ensureLanApiUrl();
     try {
       const [fetchedMovies, fetchedShowtimes] = await Promise.all([
         fetchMovies(),

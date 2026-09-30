@@ -127,6 +127,13 @@ export function AdminTicketsScreen() {
                     style={styles.checkBtn}
                   />
                 </View>
+                <NeonButton
+                  title="Mở cổng quét QR camera"
+                  variant="outline"
+                  size="sm"
+                  onPress={() => navigation.navigate('StaffScan', { openCamera: true })}
+                  style={{ marginTop: spacing.sm }}
+                />
               </GlassCard>
 
               {error ? <Text style={styles.error}>{error}</Text> : null}

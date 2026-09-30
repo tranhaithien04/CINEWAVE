@@ -13,6 +13,12 @@ export async function fetchMyTicket(code: string): Promise<AdminBooking> {
   return res.ticket;
 }
 
+export function inspectTicket(code: string, sig: string, kind?: 'ticket' | 'refund') {
+  const query = new URLSearchParams({ code, sig });
+  if (kind) query.set('kind', kind);
+  return api<TicketInspectResult>(`/tickets/inspect?${query.toString()}`);
+}
+
 export function inspectTicketAsStaff(code: string, sig?: string, kind?: 'ticket' | 'refund') {
   const query = new URLSearchParams({ code });
   if (sig) query.set('sig', sig);
